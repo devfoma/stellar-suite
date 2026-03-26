@@ -30,3 +30,5 @@ extension/templates/*/.soroban/
 extension/templates/*/Cargo.lock
 extension/templates/**/*.wasm
 issues/
+
+docs

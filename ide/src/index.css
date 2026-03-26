@@ -103,3 +103,8 @@
 ::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--muted-foreground));
 }
+
+.search-match-decoration {
+  background-color: rgba(80, 181, 255, 0.28);
+  border-radius: 2px;
+}

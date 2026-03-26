@@ -20,6 +20,11 @@ const App = () => {
         setCommandPaletteOpen((prev) => !prev);
       }
 
+      if ((event.metaKey || event.ctrlKey) && event.shiftKey && event.key.toLowerCase() === "f") {
+        event.preventDefault();
+        window.dispatchEvent(new Event("ide:open-search"));
+      }
+
       if (event.key === "Escape") {
         setCommandPaletteOpen(false);
       }

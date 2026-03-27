@@ -13,6 +13,20 @@ export interface WorkspaceTextFile {
   content: string;
 }
 
+export type MockLedgerEntryType = "account" | "contractData" | "tokenBalance";
+
+export interface MockLedgerEntry {
+  id: string;
+  type: MockLedgerEntryType;
+  key: string;
+  value: string;
+  metadata?: Record<string, string>;
+}
+
+export interface MockLedgerState {
+  entries: MockLedgerEntry[];
+}
+
 export type MobilePanel = "none" | "explorer" | "interact" | "deployments" | "identities";
 export type SidebarTab = "explorer" | "deployments" | "identities" | "search" | "tests";
 export type BuildState = "idle" | "building" | "success" | "error";
@@ -43,6 +57,7 @@ interface WorkspaceState {
   mobilePanel: MobilePanel;
   isExplorerDragActive: boolean;
   leftSidebarTab: SidebarTab;
+  mockLedgerState: MockLedgerState;
 
   // Hydration State
   hydrationComplete: boolean;
@@ -79,6 +94,8 @@ interface WorkspaceState {
   setMobilePanel: (panel: MobilePanel) => void;
   setIsExplorerDragActive: (active: boolean) => void;
   setLeftSidebarTab: (tab: SidebarTab) => void;
+  setMockLedgerState: (state: MockLedgerState) => void;
+  clearMockLedgerState: () => void;
   appendTerminalOutput: (chunk: string) => void;
 
   // Misc Actions
@@ -157,6 +174,9 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       mobilePanel: "none",
       isExplorerDragActive: false,
       leftSidebarTab: "explorer",
+      mockLedgerState: {
+        entries: [],
+      },
 
       // Initial Hydration State
       hydrationComplete: false,
@@ -349,6 +369,8 @@ export const useWorkspaceStore = create<WorkspaceState>()(
       setMobilePanel: (mobilePanel) => set({ mobilePanel }),
       setIsExplorerDragActive: (isExplorerDragActive) => set({ isExplorerDragActive }),
       setLeftSidebarTab: (leftSidebarTab) => set({ leftSidebarTab }),
+      setMockLedgerState: (mockLedgerState) => set({ mockLedgerState }),
+      clearMockLedgerState: () => set({ mockLedgerState: { entries: [] } }),
       appendTerminalOutput: (chunk) =>
         set((state) => ({ terminalOutput: state.terminalOutput + chunk })),
 
@@ -366,6 +388,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
         files: state.files,
         openTabs: state.openTabs,
         activeTabPath: state.activeTabPath,
+        mockLedgerState: state.mockLedgerState,
       }),
       onRehydrateStorage: () => (state) => {
         if (state) {

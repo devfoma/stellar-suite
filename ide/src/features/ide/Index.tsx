@@ -147,6 +147,7 @@ const Index = () => {
     setMobilePanel,
     setLeftSidebarTab,
     appendTerminalOutput,
+    mockLedgerState,
   } = useWorkspaceStore();
 
   const {
@@ -308,13 +309,23 @@ const Index = () => {
 
   const handleTest = useCallback(() => {
     setTerminalExpanded(true);
+
+    if (mockLedgerState.entries.length > 0) {
+      appendTerminalOutput(
+        `Injecting ${mockLedgerState.entries.length} mock ledger ${mockLedgerState.entries.length === 1 ? "entry" : "entries"} via --ledger-snapshot...\r\n`
+      );
+      appendTerminalOutput(
+        `Mock state: ${JSON.stringify(mockLedgerState)}\r\n`
+      );
+    }
+
     appendTerminalOutput("Running tests...\r\n");
     setTimeout(() => {
       appendTerminalOutput(
         "✓ test_hello ... ok\r\ntest result: ok. 1 passed; 0 failed;\r\n"
       );
     }, 1200);
-  }, [appendTerminalOutput, setTerminalExpanded]);
+  }, [appendTerminalOutput, setTerminalExpanded, mockLedgerState]);
 
   const handleInvoke = useCallback(
     async (fn: string, args: string) => {
@@ -762,6 +773,11 @@ const Index = () => {
                       }}
                       onRunTest={(test) => {
                         setTerminalExpanded(true);
+                        if (mockLedgerState.entries.length > 0) {
+                          appendTerminalOutput(
+                            `Injecting ${mockLedgerState.entries.length} mock ledger ${mockLedgerState.entries.length === 1 ? "entry" : "entries"} via --ledger-snapshot...\r\n`
+                          );
+                        }
                         appendTerminalOutput(
                           `Running test ${test.testName} (${test.kind}) in ${test.filePath}:${test.line}\r\n`
                         );

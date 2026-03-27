@@ -7,6 +7,7 @@ import {
   X,
   Play,
   Github,
+  Database,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -14,6 +15,7 @@ import { BuildButton } from "@/components/ide/BuildButton";
 import { Button } from "@/components/ui/button";
 import { type NetworkKey } from "@/lib/networkConfig";
 import ImportGithubModal from "@/components/ide/ImportGithubModal";
+import StateMockEditor from "@/components/modals/StateMockEditor";
 import { WalletManager } from "@/components/WalletManager";
 import { useWorkspaceStore } from "@/store/workspaceStore";
 
@@ -36,9 +38,13 @@ export function Toolbar({
     network,
     setNetwork,
     saveStatus,
+    mockLedgerState,
+    setMockLedgerState,
   } = useWorkspaceStore();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [stateEditorOpen, setStateEditorOpen] = useState(false);
+  const hasMockState = mockLedgerState.entries.length > 0;
 
   return (
     <div className="border-b border-border bg-toolbar-bg">
@@ -85,6 +91,17 @@ export function Toolbar({
           >
             <Github className="h-3.5 w-3.5" />
             Import
+          </Button>
+
+          <Button
+            onClick={() => setStateEditorOpen(true)}
+            variant="ghost"
+            size="sm"
+            className={`gap-1.5 text-xs h-8 ${hasMockState ? "text-primary" : ""}`}
+            title="Mock Ledger State"
+          >
+            <Database className="h-3.5 w-3.5" />
+            Mock State{hasMockState ? ` (${mockLedgerState.entries.length})` : ""}
           </Button>
 
           {saveStatus && (
@@ -215,6 +232,18 @@ export function Toolbar({
             <Github className="h-3 w-3" />
             Import GitHub
           </Button>
+
+          <Button
+            variant="outline"
+            className={`flex-1 gap-1 text-[11px] h-9 ${hasMockState ? "text-primary" : ""}`}
+            onClick={() => {
+              setStateEditorOpen(true);
+              setMobileMenuOpen(false);
+            }}
+          >
+            <Database className="h-3 w-3" />
+            Mock State
+          </Button>
         </div>
       )}
 
@@ -222,6 +251,13 @@ export function Toolbar({
       <ImportGithubModal
         open={importOpen}
         onClose={() => setImportOpen(false)}
+      />
+
+      <StateMockEditor
+        open={stateEditorOpen}
+        onOpenChange={setStateEditorOpen}
+        value={mockLedgerState}
+        onSave={setMockLedgerState}
       />
     </div>
   );

@@ -22,7 +22,7 @@ export type ActivityTab =
   | "identities"
   | "search"
   | "security"
-  | "tests";
+  | "tests"
   | "outline";
 
 interface ActivityBarProps {

@@ -29,7 +29,7 @@ export type SidebarTab =
   | "identities"
   | "search"
   | "security"
-  | "tests";
+  | "tests"
   | "outline";
 export type BuildState = "idle" | "building" | "success" | "error";
 

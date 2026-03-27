@@ -1,4 +1,5 @@
 import { sampleContracts, findFile, FileNode } from "./sample-contracts";
+import { gitService } from "@/lib/vcs/gitService";
 
 /**
  * Simulated Git utilities for the IDE.
@@ -9,6 +10,11 @@ export const git = {
    * In this simulated environment, it returns the initial content from sampleContracts.
    */
   readTree: async (path: string[]): Promise<string> => {
+    const localHeadContent = await gitService.readHeadFile(path);
+    if (localHeadContent !== null) {
+      return localHeadContent;
+    }
+
     const file = findFile(sampleContracts, path);
     if (!file || file.type !== "file") {
       throw new Error(`File not found at path: ${path.join("/")}`);

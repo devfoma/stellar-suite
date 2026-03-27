@@ -3,6 +3,7 @@ import { useDiagnosticsStore } from "@/store/useDiagnosticsStore";
 import { useCoverageStore } from "@/store/useCoverageStore";
 import { useWorkspaceStore } from "@/store/workspaceStore";
 import { applyEditsToTree, computeRenameEdits, validateRustIdentifier } from "@/utils/renameProvider";
+import { useEditorStore } from "@/store/editorStore";
 import Editor, { OnChange, OnMount } from "@monaco-editor/react";
 import type * as Monaco from "monaco-editor";
 import React, { Suspense, useEffect, useRef } from "react";
@@ -20,6 +21,7 @@ const CodeEditor: React.FC<CodeEditorProps> = ({ onCursorChange, onSave }) => {
   const { diagnostics } = useDiagnosticsStore();
   const { config, setMathDiagnostics, getAllDiagnostics } = useMathSafetyStore();
   const { getFileCoverage } = useCoverageStore();
+  const { setJumpToLine } = useEditorStore();
   const rustProviderRegistered = useRef(false);
   const monacoRef = useRef<typeof Monaco | null>(null);
   const editorRef = useRef<Monaco.editor.IStandaloneCodeEditor | null>(null);
@@ -154,6 +156,13 @@ const CodeEditor: React.FC<CodeEditorProps> = ({ onCursorChange, onSave }) => {
   const handleEditorDidMount: OnMount = (editor, monaco) => {
     monacoRef.current = monaco;
     editorRef.current = editor;
+
+    // Register jump-to-line function for outline view
+    setJumpToLine((line: number) => {
+      editor.revealLineInCenter(line);
+      editor.setPosition({ lineNumber: line, column: 1 });
+      editor.focus();
+    });
 
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
       onSave?.();

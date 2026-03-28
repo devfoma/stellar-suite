@@ -26,6 +26,7 @@ import { useWorkspaceStore } from "@/store/workspaceStore";
 import { GitBlameToggle } from "@/components/editor/GitBlameLines";
 import { SignInButton } from "@/components/auth/SignInButton";
 import { UserMenu } from "@/components/auth/UserMenu";
+import { SaveToCloudButton } from "@/components/cloud/SaveToCloudButton";
 import { useAuth } from "@/hooks/useAuth";
 
 type BuildState = "idle" | "building" | "success" | "error";
@@ -139,6 +140,8 @@ export function Toolbar({
             <Database className="h-3.5 w-3.5" />
             Mock State{hasMockState ? ` (${mockLedgerState.entries.length})` : ""}
           </Button>
+
+          <SaveToCloudButton />
 
           {saveStatus ? <span className="ml-2 font-mono text-[10px] text-muted-foreground">{saveStatus}</span> : null}
         </div>

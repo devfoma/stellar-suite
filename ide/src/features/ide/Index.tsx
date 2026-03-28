@@ -57,6 +57,9 @@ import { useWorkspaceStore, flattenWorkspaceFiles } from "@/store/workspaceStore
 import { useVCSStore } from "@/store/vcsStore";
 import { useErrorHelpStore } from "@/store/useErrorHelpStore";
 import ErrorHelpPanel from "@/components/ide/ErrorHelpPanel";
+import { useCloudSyncStore } from "@/store/useCloudSyncStore";
+import { ConflictModal } from "@/components/cloud/ConflictModal";
+import { useAuth } from "@/hooks/useAuth";
 import { parseCargoAuditOutput } from "@/utils/cargoAuditParser";
 import { parseMixedOutput } from "@/utils/cargoParser";
 import { parseClippyOutput, type ClippyLint } from "@/utils/clippyParser";
@@ -215,6 +218,8 @@ export default function Index() {
   const { setDiagnostics, clearDiagnostics } = useDiagnosticsStore();
   const { addContract } = useDeployedContractsStore();
   const { isOpen: isErrorHelpOpen, errorCode, closeErrorHelp } = useErrorHelpStore();
+  const { user, isAuthenticated } = useAuth();
+  const { scheduleAutoSave, syncStatus, conflictData } = useCloudSyncStore();
   const {
     isDeployModalOpen,
     deploymentStep,
@@ -272,6 +277,13 @@ export default function Index() {
 
     void hydrateLocalRepo(flattenWorkspaceFiles(files));
   }, [files, hydrateLocalRepo, hydrationComplete]);
+
+  // Auto-save to cloud (throttled 5 s) whenever files change and user is signed in
+  useEffect(() => {
+    if (!isAuthenticated || !user || !hydrationComplete) return;
+    const userId = user.id ?? user.email ?? "anon";
+    scheduleAutoSave(userId, flattenWorkspaceFiles(files), network);
+  }, [files, isAuthenticated, user, network, hydrationComplete, scheduleAutoSave]);
 
   useEffect(() => {
     if (!hydrationComplete || !localRepoInitialized) {
@@ -1093,6 +1105,11 @@ export default function Index() {
       </div>
 
       <StarterProjectWizard open={wizardOpen} onOpenChange={setWizardOpen} />
+
+      {/* ── Cloud conflict resolution modal ───────────────────────────── */}
+      {syncStatus === "conflict" && conflictData && (
+        <ConflictModal conflictData={conflictData} />
+      )}
       {/* ── Deployment progress modal ──────────────────────────────── */}
       <DeploymentStepper
         open={isDeployModalOpen}

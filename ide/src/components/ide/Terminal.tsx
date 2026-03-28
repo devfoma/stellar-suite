@@ -1,22 +1,47 @@
-import { useEffect, useRef } from "react";
+import { ReactNode, useEffect, useMemo, useRef } from "react";
 import { FitAddon } from "@xterm/addon-fit";
 import { Terminal as XTerm } from "@xterm/xterm";
 import "@xterm/xterm/css/xterm.css";
 import { ChevronDown, ChevronUp, Terminal as TermIcon, Trash2 } from "lucide-react";
 import { useWorkspaceStore } from "@/store/workspaceStore";
 
-interface TerminalProps {
-  onToggle?: () => void;
-  onClear?: () => void;
+export interface LogEntry {
+  type: "info" | "success" | "warning" | "error";
+  message: string;
+  timestamp: string;
 }
 
-export function Terminal({ onToggle: propOnToggle, onClear: propOnClear }: TerminalProps) {
+interface TerminalProps {
+  logs?: LogEntry[];
+  isExpanded?: boolean;
+  onToggle?: () => void;
+  onClear?: () => void;
+  supplementaryContent?: ReactNode;
+}
+
+export function Terminal({
+  logs,
+  isExpanded: propIsExpanded,
+  onToggle: propOnToggle,
+  onClear: propOnClear,
+  supplementaryContent,
+}: TerminalProps) {
   const {
-    terminalOutput: output,
-    terminalExpanded: isExpanded,
+    terminalOutput: storeOutput,
+    terminalExpanded: storeExpanded,
     setTerminalExpanded,
     setTerminalOutput,
   } = useWorkspaceStore();
+  const output = useMemo(() => {
+    if (!logs) {
+      return storeOutput;
+    }
+
+    return logs
+      .map((entry) => `[${entry.timestamp}] ${entry.type.toUpperCase()} ${entry.message}`)
+      .join("\r\n");
+  }, [logs, storeOutput]);
+  const isExpanded = propIsExpanded ?? storeExpanded;
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const terminalRef = useRef<XTerm | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
@@ -148,14 +173,17 @@ export function Terminal({ onToggle: propOnToggle, onClear: propOnClear }: Termi
       </button>
 
       {isExpanded && (
-        <div className="relative flex-1 overflow-hidden p-2">
-          <div ref={viewportRef} className="h-full w-full" />
-          {output.length === 0 && (
-            <div className="pointer-events-none absolute inset-0 p-4 font-mono text-[10px] text-muted-foreground/50 md:text-xs">
-              <span className="text-terminal-cyan">$</span> Ready. Build a contract to see output...
-              <span className="ml-0.5 inline-block h-3.5 w-2 animate-blink bg-foreground/70" />
-            </div>
-          )}
+        <div className="flex min-h-0 flex-1 flex-col gap-2 p-2">
+          {supplementaryContent}
+          <div className="relative min-h-[9rem] flex-1 overflow-hidden">
+            <div ref={viewportRef} className="h-full w-full" />
+            {output.length === 0 && (
+              <div className="pointer-events-none absolute inset-0 p-4 font-mono text-[10px] text-muted-foreground/50 md:text-xs">
+                <span className="text-terminal-cyan">$</span> Ready. Build a contract to see output...
+                <span className="ml-0.5 inline-block h-3.5 w-2 animate-blink bg-foreground/70" />
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

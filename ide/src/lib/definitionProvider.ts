@@ -164,24 +164,21 @@ export class DefinitionProvider {
   }
 
   public registerOnDefinitionHandler(monaco: typeof Monaco) {
-    if (!this.editor) return;
-    // Register command for Ctrl+Click / Cmd+Click
-    this.editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.F1, () => {
-      if (!this.editor) return;
-
-      const position = this.editor.getPosition();
-      const model = this.editor.getModel();
-
-      if (position && model) {
-        const word = model.getWordAtPosition(position);
-        if (word) {
-          this.goToDefinition(word.word);
-        }
-      }
-    });
-
-    // Enable Ctrl+Click / Cmd+Click for go to definition
     if (this.editor) {
+      // Register command for Ctrl+Click / Cmd+Click
+      this.editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.F1, () => {
+        const position = this.editor!.getPosition();
+        const model = this.editor!.getModel();
+
+        if (position && model) {
+          const word = model.getWordAtPosition(position);
+          if (word) {
+            this.goToDefinition(word.word);
+          }
+        }
+      });
+
+      // Enable Ctrl+Click / Cmd+Click for go to definition
       this.editor.onMouseDown((e) => {
         if (e.event.ctrlKey || e.event.metaKey) {
           const position = e.target.position;

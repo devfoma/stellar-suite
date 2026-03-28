@@ -5,7 +5,7 @@
  *
  * Each snippet is self-contained valid Rust that can be inserted directly into
  * a test file. The `insertText` field uses VS Code / Monaco snippet syntax
- * (tab-stops $1, $2 … and placeholders ${1:name}) so the editor can guide the
+ * (tab-stops $1, $2 … and placeholders \${1:name}) so the editor can guide the
  * developer through customisation after insertion.
  *
  * Categories
@@ -39,7 +39,7 @@ export interface PropTestSnippet {
   readonly category: SnippetCategory;
   /**
    * The Rust source code to insert.
-   * Uses Monaco snippet syntax: $1, $2, ${1:placeholder}.
+   * Uses Monaco snippet syntax: $1, $2, \${1:placeholder}.
    * $0 marks the final cursor position.
    */
   readonly insertText: string;
@@ -60,12 +60,12 @@ export interface PropTestSnippet {
 // ---------------------------------------------------------------------------
 
 /**
- * Strip Monaco tab-stop markers ($1, ${1:foo}) from a snippet string to
+ * Strip Monaco tab-stop markers ($1, \${1:foo}) from a snippet string to
  * produce a clean preview / clipboard string.
  */
 export function stripTabStops(snippet: string): string {
   return snippet
-    .replace(/\$\{\d+:([^}]*)\}/g, "$1") // ${1:placeholder} → placeholder
+    .replace(/\$\{\d+:([^}]*)\}/g, "$1") // \${1:placeholder} → placeholder
     .replace(/\$\d+/g, "");               // $1 → ""
 }
 
@@ -589,7 +589,7 @@ mod prop_tests {
     insertText: `[dev-dependencies]
 soroban-sdk = { workspace = true, features = ["testutils"] }
 proptest    = { version = "\${1:1}", default-features = false, features = ["alloc"] }
-\$0`,
+$0`,
     get previewText() {
       return stripTabStops(this.insertText);
     },

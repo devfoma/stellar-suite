@@ -5,6 +5,17 @@ export interface GitHubRepoInfo {
   path?: string;
 }
 
+interface GitHubTreeNode {
+  path: string;
+  type: string;
+  url: string;
+}
+
+export interface ImportedGitHubFile {
+  path: string;
+  content: string;
+}
+
 export function parseGitHubUrl(url: string): GitHubRepoInfo | null {
   try {
     const u = new URL(url);
@@ -35,19 +46,19 @@ export async function fetchRepoTree(info: GitHubRepoInfo) {
   }
 
   const data = await res.json();
-  return data.tree;
+  return data.tree as GitHubTreeNode[];
 }
 
 const VALID_EXT = [".rs", ".toml", ".json"];
 
-export async function fetchFiles(tree: any[]) {
+export async function fetchFiles(tree: GitHubTreeNode[]): Promise<ImportedGitHubFile[]> {
   const files = tree.filter(
     (f) =>
       f.type === "blob" &&
       VALID_EXT.some((ext) => f.path.endsWith(ext))
   );
 
-  const results = [];
+  const results: ImportedGitHubFile[] = [];
 
   for (const file of files) {
     const rawUrl = `https://raw.githubusercontent.com/${file.url

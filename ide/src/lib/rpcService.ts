@@ -20,6 +20,31 @@ export interface CustomHeaders {
   [key: string]: string;
 }
 
+const normalizeResourceUsage = (value: unknown): SimulationResult["resourceUsage"] => {
+  if (!value || typeof value !== "object") {
+    return undefined;
+  }
+
+  const input = value as {
+    cpuInstructions?: unknown;
+    cpu_instructions?: unknown;
+    memoryBytes?: unknown;
+    memory_bytes?: unknown;
+    minResourceFee?: unknown;
+    min_resource_fee?: unknown;
+  };
+
+  const cpuCandidate = input.cpuInstructions ?? input.cpu_instructions;
+  const memoryCandidate = input.memoryBytes ?? input.memory_bytes;
+  const feeCandidate = input.minResourceFee ?? input.min_resource_fee;
+
+  return {
+    cpuInstructions: typeof cpuCandidate === "number" ? cpuCandidate : undefined,
+    memoryBytes: typeof memoryCandidate === "number" ? memoryCandidate : undefined,
+    minResourceFee: typeof feeCandidate === "string" ? feeCandidate : undefined,
+  };
+};
+
 export class RpcService {
   private rpcUrl: string;
   private customHeaders: CustomHeaders;
@@ -110,7 +135,7 @@ export class RpcService {
       return {
         success: true,
         result: result?.returnValue ?? result?.result ?? result,
-        resourceUsage: result?.resourceUsage ?? result?.resource_usage,
+        resourceUsage: normalizeResourceUsage(result?.resourceUsage ?? result?.resource_usage),
       };
     } catch (error) {
       if (error instanceof TypeError && error.message.includes("fetch")) {

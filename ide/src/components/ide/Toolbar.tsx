@@ -24,6 +24,11 @@ import StateMockEditor from "@/components/modals/StateMockEditor";
 import { SettingsModal } from "@/components/ide/SettingsModal";
 import { WalletManager } from "@/components/WalletManager";
 import { useWorkspaceStore } from "@/store/workspaceStore";
+import { GitBlameToggle } from "@/components/editor/GitBlameLines";
+import { SignInButton } from "@/components/auth/SignInButton";
+import { UserMenu } from "@/components/auth/UserMenu";
+import { SaveToCloudButton } from "@/components/cloud/SaveToCloudButton";
+import { useAuth } from "@/hooks/useAuth";
 
 type BuildState = "idle" | "building" | "success" | "error";
 
@@ -76,6 +81,8 @@ export function Toolbar({
     [onNetworkChange, setNetwork],
   );
 
+  const { isAuthenticated } = useAuth();
+
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [ciOpen, setCiOpen] = useState(false);
@@ -123,16 +130,16 @@ export function Toolbar({
             </Button>
           ) : null}
 
+          <GitBlameToggle />
+
           <Button onClick={() => setImportOpen(true)} variant="ghost" size="sm" className="h-8 gap-1.5 text-xs">
             <Github className="h-3.5 w-3.5" />
             Import
           </Button>
-
           <Button onClick={() => setCiOpen(true)} variant="ghost" size="sm" className="h-8 gap-1.5 text-xs">
             <FileCode2 className="h-3.5 w-3.5" />
             Export CI
           </Button>
-
           <Button
             onClick={() => setStateEditorOpen(true)}
             variant="ghost"
@@ -143,6 +150,8 @@ export function Toolbar({
             <Database className="h-3.5 w-3.5" />
             Mock State{hasMockState ? ` (${mockLedgerState.entries.length})` : ""}
           </Button>
+
+          <SaveToCloudButton />
 
           {saveStatus ? <span className="ml-2 font-mono text-[10px] text-muted-foreground">{saveStatus}</span> : null}
         </div>
@@ -162,12 +171,8 @@ export function Toolbar({
             </select>
           </label>
           <WalletManager />
-          <button
-            onClick={() => setSettingsOpen(true)}
-            className="rounded p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            title="Settings"
-            aria-label="Settings"
-          >
+          {isAuthenticated ? <UserMenu /> : <SignInButton />}
+          <button className="rounded p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" title="Settings" aria-label="Settings">
             <Settings className="h-4 w-4" />
           </button>
         </div>
@@ -194,6 +199,9 @@ export function Toolbar({
           </select>
           <div className="origin-right scale-90">
             <WalletManager />
+          </div>
+          <div className="origin-right scale-90">
+            {isAuthenticated ? <UserMenu /> : <SignInButton />}
           </div>
           <button
             onClick={() => setMobileMenuOpen((prev) => !prev)}
@@ -299,9 +307,7 @@ export function Toolbar({
             <FileCode2 className="h-3 w-3" />
             Export CI
           </Button>
-
           <Button
-            variant="outline"
             className={`h-9 flex-1 gap-1 text-[11px] ${hasMockState ? "text-primary" : ""}`}
             onClick={() => {
               setStateEditorOpen(true);

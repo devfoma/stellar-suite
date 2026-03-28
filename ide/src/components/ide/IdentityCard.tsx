@@ -1,24 +1,28 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { fundWithFriendbot } from "@/utils/friendbot";
-import { useFileStore } from "@/store/useFileStore";
+import { useWorkspaceStore } from "@/store/workspaceStore";
+import { useIdentityStore } from "@/store/useIdentityStore";
 
 export function IdentityCard() {
-  const { identities, activeIdentityId, setActiveIdentity, network, tokenBalances, refreshBalances } =
-    useFileStore();
-
-  const activeIdentity = useMemo(
-    () => identities.find((i) => i.id === activeIdentityId) ?? null,
-    [identities, activeIdentityId]
-  );
+  const { network } = useWorkspaceStore();
+  const {
+    identities,
+    activeIdentity,
+    setActiveIdentity,
+    balancesByPublicKey,
+    refreshBalances,
+  } = useIdentityStore();
 
   const canUseFriendbot = network === "testnet" || network === "futurenet";
 
   const [isFunding, setIsFunding] = useState(false);
 
-  const xlmBalance = tokenBalances?.XLM ?? "0.00";
+  const xlmBalance = activeIdentity
+    ? balancesByPublicKey[activeIdentity.publicKey] ?? "0.00"
+    : "0.00";
 
   const handleFund = async () => {
     if (!activeIdentity) return;
@@ -26,7 +30,7 @@ export function IdentityCard() {
     try {
       await fundWithFriendbot(activeIdentity.publicKey, network, { targetXlm: 10_000 });
       toast.success("Funded account with Friendbot.");
-      await refreshBalances();
+      await refreshBalances(network);
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : "Friendbot funding failed.";
       toast.error(message);
@@ -44,15 +48,18 @@ export function IdentityCard() {
       <div className="space-y-2">
         <label className="text-[10px] text-muted-foreground font-mono block">Active identity</label>
         <select
-          value={activeIdentityId ?? ""}
-          onChange={(e) => setActiveIdentity(e.target.value || null)}
+          value={activeIdentity?.publicKey ?? ""}
+          onChange={(e) => {
+            const next = identities.find((identity) => identity.publicKey === e.target.value) ?? null;
+            setActiveIdentity(next);
+          }}
           className="w-full bg-secondary border border-border rounded px-2 py-1 text-xs font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
           disabled={identities.length === 0}
           aria-label="Active identity"
         >
           {identities.map((id) => (
-            <option key={id.id} value={id.id}>
-              {id.name}
+            <option key={id.publicKey} value={id.publicKey}>
+              {id.nickname}
             </option>
           ))}
         </select>

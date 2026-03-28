@@ -83,21 +83,23 @@ const DEFAULT_BUFFER_SIZE = 100;
  * Decode the first XDR topic segment as a Symbol string.
  * Falls back to the raw base-64 value if decoding fails.
  */
-function decodeFirstTopic(topics: string[]): string {
-  if (!topics.length) return "(no topic)";
+function decodeFirstTopic(topics: unknown): string {
+  if (!Array.isArray(topics) || !topics.length) return "(no topic)";
+  const firstTopic = topics[0];
+  const topicStr = typeof firstTopic === "string" ? firstTopic : String(firstTopic);
   // The first segment is almost always a Symbol — try to extract the ASCII
   // payload from the base-64 XDR without pulling in the full XDR decoder.
   try {
-    const raw = atob(topics[0]);
+    const raw = atob(topicStr);
     // ScVal Symbol: type byte 0x0F followed by a 4-byte length then ASCII
     // We just grab printable ASCII chars from the decoded bytes.
     const printable = Array.from(raw)
       .filter((c) => c.charCodeAt(0) >= 0x20 && c.charCodeAt(0) < 0x7f)
       .join("")
       .trim();
-    return printable || topics[0];
+    return printable || topicStr;
   } catch {
-    return topics[0];
+    return topicStr;
   }
 }
 
@@ -170,9 +172,9 @@ export function createEventSubscriber(
       for (const raw of response.events) {
         const event: ContractEvent = {
           id: raw.id,
-          contractId: raw.contractId,
-          txHash: raw.txHash,
-          timestamp: raw.ledgerClosedAt,
+          contractId: typeof raw.contractId === "string" ? raw.contractId : (raw.contractId?.toString() ?? ""),
+          txHash: raw.txHash ?? "",
+          timestamp: raw.ledgerClosedAt ?? new Date().toISOString(),
           topic: decodeFirstTopic(raw.topic),
           data: (() => {
             try {
@@ -196,8 +198,9 @@ export function createEventSubscriber(
         // Advance cursor to the paging token of the last processed event.
         // Using the per-event pagingToken (rather than the response-level cursor)
         // is the most reliable way to resume exactly where we left off.
-        if (raw.pagingToken) {
-          cursor = raw.pagingToken;
+        const rawRecord = raw as unknown as Record<string, unknown>;
+        if (rawRecord.pagingToken) {
+          cursor = String(rawRecord.pagingToken);
         }
       }
 

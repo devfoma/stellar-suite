@@ -6,12 +6,18 @@ import {
   History,
   Search,
   Beaker,
+  Bug,
   ShieldAlert,
-  Plug,
   PanelLeftClose,
   PanelLeftOpen,
   Settings,
   ListTree,
+  Library,
+  FileSearch,
+  Binary,
+  BarChart2,
+  GitMerge,
+  TrendingUp,
 } from "lucide-react";
 import { ReactNode } from "react";
 
@@ -20,10 +26,18 @@ export type ActivityTab =
   | "git"
   | "deployments"
   | "identities"
+  | "multisig"
+  | "liquidity"
   | "search"
   | "security"
   | "tests"
-  | "outline";
+  | "fuzzing"
+  | "outline"
+  | "references"
+  | "binary-diff"
+  | "oracle"
+  | "benchmarks"
+  | "inspector";
 
 interface ActivityBarProps {
   activeTab: ActivityTab;
@@ -65,6 +79,18 @@ const tabs: ActivityBarTab[] = [
     title: "Identities",
   },
   {
+    id: "multisig",
+    icon: <GitMerge className="h-5 w-5" />,
+    label: "Multisig",
+    title: "Multisig Transaction Builder",
+  },
+  {
+    id: "liquidity",
+    icon: <TrendingUp className="h-5 w-5" />,
+    label: "LP Simulator",
+    title: "Liquidity Pool Swap Simulator",
+  },
+  {
     id: "search",
     icon: <Search className="h-5 w-5" />,
     label: "Search",
@@ -75,6 +101,12 @@ const tabs: ActivityBarTab[] = [
     icon: <ListTree className="h-5 w-5" />,
     label: "Outline",
     title: "Symbol Outline",
+  },
+  {
+    id: "binary-diff",
+    icon: <Binary className="h-5 w-5" />,
+    label: "Binary Diff",
+    title: "WASM Binary Diffing Tool",
   },
   {
     id: "security",
@@ -89,10 +121,28 @@ const tabs: ActivityBarTab[] = [
     title: "Test Explorer",
   },
   {
-    id: "oracle",
-    icon: <Plug className="h-5 w-5" />,
-    label: "Oracle",
-    title: "Oracle Integration Assistant",
+    id: "fuzzing",
+    icon: <Bug className="h-5 w-5" />,
+    label: "Fuzzing",
+    title: "cargo-fuzz Security Testing",
+  },
+  {
+    id: "inspector",
+    icon: <FileSearch className="h-5 w-5" />,
+    label: "Inspector",
+    title: "WASM Contract Inspector",
+  },
+  {
+    id: "references",
+    icon: <Library className="h-5 w-5" />,
+    label: "References",
+    title: "Find All References",
+  },
+  {
+    id: "benchmarks",
+    icon: <BarChart2 className="h-5 w-5" />,
+    label: "Benchmarks",
+    title: "Criterion Benchmark Dashboard",
   },
 ];
 

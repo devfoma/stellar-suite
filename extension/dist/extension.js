@@ -2462,6 +2462,195 @@ var require_installCli = __commonJS({
   }
 });
 
+// out/services/latencyMonitor.js
+var require_latencyMonitor = __commonJS({
+  "out/services/latencyMonitor.js"(exports2) {
+    "use strict";
+    Object.defineProperty(exports2, "__esModule", { value: true });
+    exports2.LatencyMonitor = void 0;
+    var LatencyMonitor = class {
+      constructor(rpcUrl) {
+        this.measurements = [];
+        this.maxMeasurements = 20;
+        this.rpcUrl = rpcUrl.endsWith("/") ? rpcUrl.slice(0, -1) : rpcUrl;
+      }
+      /**
+       * Measure latency by making a lightweight RPC call
+       */
+      async measureLatency() {
+        const startTime = Date.now();
+        try {
+          const response = await fetch(`${this.rpcUrl}/health`, {
+            method: "GET",
+            signal: AbortSignal.timeout(1e4)
+          });
+          const latency = Date.now() - startTime;
+          if (response.ok) {
+            const result = {
+              latency,
+              success: true,
+              timestamp: Date.now()
+            };
+            this.addMeasurement(result);
+            return result;
+          }
+          return await this.measureLatencyViaRpc();
+        } catch (error) {
+          try {
+            return await this.measureLatencyViaRpc();
+          } catch (rpcError) {
+            const latency = Date.now() - startTime;
+            const result = {
+              latency,
+              success: false,
+              timestamp: Date.now(),
+              error: rpcError instanceof Error ? rpcError.message : "Unknown error"
+            };
+            this.addMeasurement(result);
+            return result;
+          }
+        }
+      }
+      /**
+       * Measure latency using RPC getHealth method
+       */
+      async measureLatencyViaRpc() {
+        const startTime = Date.now();
+        try {
+          const response = await fetch(`${this.rpcUrl}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              jsonrpc: "2.0",
+              id: 1,
+              method: "getHealth"
+            }),
+            signal: AbortSignal.timeout(1e4)
+          });
+          const latency = Date.now() - startTime;
+          if (response.ok) {
+            const result = {
+              latency,
+              success: true,
+              timestamp: Date.now()
+            };
+            this.addMeasurement(result);
+            return result;
+          }
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        } catch (error) {
+          const latency = Date.now() - startTime;
+          const result = {
+            latency,
+            success: false,
+            timestamp: Date.now(),
+            error: error instanceof Error ? error.message : "Unknown error"
+          };
+          this.addMeasurement(result);
+          return result;
+        }
+      }
+      /**
+       * Add measurement to history
+       */
+      addMeasurement(result) {
+        this.measurements.push(result);
+        if (this.measurements.length > this.maxMeasurements) {
+          this.measurements.shift();
+        }
+        if (this.onLatencyUpdate) {
+          this.onLatencyUpdate(result);
+        }
+      }
+      /**
+       * Get network health statistics
+       */
+      getNetworkHealth() {
+        if (this.measurements.length === 0) {
+          return {
+            currentLatency: -1,
+            averageLatency: -1,
+            minLatency: -1,
+            maxLatency: -1,
+            successRate: 0,
+            measurements: 0
+          };
+        }
+        const successfulMeasurements = this.measurements.filter((m) => m.success);
+        const latencies = successfulMeasurements.map((m) => m.latency);
+        const lastMeasurement = this.measurements[this.measurements.length - 1];
+        return {
+          currentLatency: lastMeasurement.success ? lastMeasurement.latency : -1,
+          averageLatency: latencies.length > 0 ? Math.round(latencies.reduce((a, b) => a + b, 0) / latencies.length) : -1,
+          minLatency: latencies.length > 0 ? Math.min(...latencies) : -1,
+          maxLatency: latencies.length > 0 ? Math.max(...latencies) : -1,
+          successRate: successfulMeasurements.length / this.measurements.length * 100,
+          measurements: this.measurements.length,
+          lastError: lastMeasurement.success ? void 0 : lastMeasurement.error
+        };
+      }
+      /**
+       * Start monitoring with specified interval
+       */
+      startMonitoring(intervalSeconds = 30, callback) {
+        this.onLatencyUpdate = callback;
+        this.measureLatency();
+        this.intervalId = setInterval(() => {
+          this.measureLatency();
+        }, intervalSeconds * 1e3);
+      }
+      /**
+       * Stop monitoring
+       */
+      stopMonitoring() {
+        if (this.intervalId) {
+          clearInterval(this.intervalId);
+          this.intervalId = void 0;
+        }
+        this.onLatencyUpdate = void 0;
+      }
+      /**
+       * Update RPC URL
+       */
+      updateRpcUrl(newUrl) {
+        this.rpcUrl = newUrl.endsWith("/") ? newUrl.slice(0, -1) : newUrl;
+        this.measurements = [];
+      }
+      /**
+       * Get color based on latency
+       */
+      static getLatencyColor(latency) {
+        if (latency < 0) {
+          return "gray";
+        }
+        if (latency < 100) {
+          return "green";
+        }
+        if (latency < 500) {
+          return "orange";
+        }
+        return "red";
+      }
+      /**
+       * Get status icon based on latency
+       */
+      static getLatencyIcon(latency) {
+        if (latency < 0) {
+          return "$(question)";
+        }
+        if (latency < 100) {
+          return "$(check)";
+        }
+        if (latency < 500) {
+          return "$(warning)";
+        }
+        return "$(error)";
+      }
+    };
+    exports2.LatencyMonitor = LatencyMonitor;
+  }
+});
+
 // out/ui/networkStatusBar.js
 var require_networkStatusBar = __commonJS({
   "out/ui/networkStatusBar.js"(exports2) {
@@ -2499,28 +2688,86 @@ var require_networkStatusBar = __commonJS({
       return result;
     };
     Object.defineProperty(exports2, "__esModule", { value: true });
-    exports2.updateNetworkStatusBar = exports2.initNetworkStatusBar = void 0;
+    exports2.disposeNetworkStatusBar = exports2.getLatencyMonitor = exports2.updateNetworkStatusBar = exports2.initNetworkStatusBar = void 0;
     var vscode2 = __importStar2(require("vscode"));
-    var statusBarItem;
+    var latencyMonitor_1 = require_latencyMonitor();
+    var networkStatusBarItem;
+    var latencyStatusBarItem;
+    var latencyMonitor;
     async function initNetworkStatusBar(context) {
-      statusBarItem = vscode2.window.createStatusBarItem(vscode2.StatusBarAlignment.Left, 100);
-      statusBarItem.command = "stellarSuite.switchNetwork";
-      context.subscriptions.push(statusBarItem);
+      networkStatusBarItem = vscode2.window.createStatusBarItem(vscode2.StatusBarAlignment.Left, 100);
+      networkStatusBarItem.command = "stellarSuite.switchNetwork";
+      context.subscriptions.push(networkStatusBarItem);
+      latencyStatusBarItem = vscode2.window.createStatusBarItem(vscode2.StatusBarAlignment.Left, 99);
+      latencyStatusBarItem.command = "stellarSuite.showNetworkHealth";
+      context.subscriptions.push(latencyStatusBarItem);
       await updateNetworkStatusBar();
-      statusBarItem.show();
+      networkStatusBarItem.show();
+      latencyStatusBarItem.show();
+      await startLatencyMonitoring();
+      context.subscriptions.push(vscode2.workspace.onDidChangeConfiguration(async (e) => {
+        if (e.affectsConfiguration("stellarSuite.rpcUrl") || e.affectsConfiguration("stellarSuite.network")) {
+          await updateNetworkStatusBar();
+          await startLatencyMonitoring();
+        }
+      }));
     }
     exports2.initNetworkStatusBar = initNetworkStatusBar;
     async function updateNetworkStatusBar() {
       try {
         const config = vscode2.workspace.getConfiguration("stellarSuite");
         const currentNetwork = config.get("network") || "testnet";
-        statusBarItem.text = `$(globe) Stellar: ${currentNetwork}`;
-        statusBarItem.tooltip = "Click to switch Stellar Network";
+        networkStatusBarItem.text = `$(globe) Stellar: ${currentNetwork}`;
+        networkStatusBarItem.tooltip = "Click to switch Stellar Network";
       } catch (e) {
-        statusBarItem.text = `$(globe) Stellar: testnet`;
+        networkStatusBarItem.text = `$(globe) Stellar: testnet`;
       }
     }
     exports2.updateNetworkStatusBar = updateNetworkStatusBar;
+    async function startLatencyMonitoring() {
+      if (latencyMonitor) {
+        latencyMonitor.stopMonitoring();
+      }
+      const config = vscode2.workspace.getConfiguration("stellarSuite");
+      const rpcUrl = config.get("rpcUrl") || "https://soroban-testnet.stellar.org:443";
+      latencyMonitor = new latencyMonitor_1.LatencyMonitor(rpcUrl);
+      latencyMonitor.startMonitoring(30, (result) => {
+        updateLatencyStatusBar(result);
+      });
+      latencyStatusBarItem.text = "$(sync~spin) ---ms";
+      latencyStatusBarItem.tooltip = "Measuring RPC latency...";
+    }
+    function updateLatencyStatusBar(result) {
+      if (result.success) {
+        const icon = latencyMonitor_1.LatencyMonitor.getLatencyIcon(result.latency);
+        const color = latencyMonitor_1.LatencyMonitor.getLatencyColor(result.latency);
+        latencyStatusBarItem.text = `${icon} ${result.latency}ms`;
+        latencyStatusBarItem.tooltip = `RPC Latency: ${result.latency}ms (${color})
+Click for detailed network health`;
+        if (color === "red") {
+          latencyStatusBarItem.backgroundColor = new vscode2.ThemeColor("statusBarItem.errorBackground");
+        } else if (color === "orange") {
+          latencyStatusBarItem.backgroundColor = new vscode2.ThemeColor("statusBarItem.warningBackground");
+        } else {
+          latencyStatusBarItem.backgroundColor = void 0;
+        }
+      } else {
+        latencyStatusBarItem.text = "$(error) ---ms";
+        latencyStatusBarItem.tooltip = `RPC Error: ${result.error || "Unknown error"}
+Click for details`;
+        latencyStatusBarItem.backgroundColor = new vscode2.ThemeColor("statusBarItem.errorBackground");
+      }
+    }
+    function getLatencyMonitor() {
+      return latencyMonitor;
+    }
+    exports2.getLatencyMonitor = getLatencyMonitor;
+    function disposeNetworkStatusBar() {
+      if (latencyMonitor) {
+        latencyMonitor.stopMonitoring();
+      }
+    }
+    exports2.disposeNetworkStatusBar = disposeNetworkStatusBar;
   }
 });
 
@@ -4169,6 +4416,127 @@ var require_analyzeSecurity = __commonJS({
   }
 });
 
+// out/commands/showNetworkHealth.js
+var require_showNetworkHealth = __commonJS({
+  "out/commands/showNetworkHealth.js"(exports2) {
+    "use strict";
+    var __createBinding2 = exports2 && exports2.__createBinding || (Object.create ? function(o, m, k, k2) {
+      if (k2 === void 0)
+        k2 = k;
+      var desc = Object.getOwnPropertyDescriptor(m, k);
+      if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+        desc = { enumerable: true, get: function() {
+          return m[k];
+        } };
+      }
+      Object.defineProperty(o, k2, desc);
+    } : function(o, m, k, k2) {
+      if (k2 === void 0)
+        k2 = k;
+      o[k2] = m[k];
+    });
+    var __setModuleDefault2 = exports2 && exports2.__setModuleDefault || (Object.create ? function(o, v) {
+      Object.defineProperty(o, "default", { enumerable: true, value: v });
+    } : function(o, v) {
+      o["default"] = v;
+    });
+    var __importStar2 = exports2 && exports2.__importStar || function(mod) {
+      if (mod && mod.__esModule)
+        return mod;
+      var result = {};
+      if (mod != null) {
+        for (var k in mod)
+          if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k))
+            __createBinding2(result, mod, k);
+      }
+      __setModuleDefault2(result, mod);
+      return result;
+    };
+    Object.defineProperty(exports2, "__esModule", { value: true });
+    exports2.showNetworkHealth = void 0;
+    var vscode2 = __importStar2(require("vscode"));
+    var networkStatusBar_12 = require_networkStatusBar();
+    var latencyMonitor_1 = require_latencyMonitor();
+    async function showNetworkHealth() {
+      const monitor = (0, networkStatusBar_12.getLatencyMonitor)();
+      if (!monitor) {
+        vscode2.window.showWarningMessage("Network monitoring is not active");
+        return;
+      }
+      const health = monitor.getNetworkHealth();
+      const config = vscode2.workspace.getConfiguration("stellarSuite");
+      const rpcUrl = config.get("rpcUrl") || "https://soroban-testnet.stellar.org:443";
+      const network = config.get("network") || "testnet";
+      const lines = [];
+      lines.push("\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550");
+      lines.push("         STELLAR RPC NETWORK HEALTH REPORT");
+      lines.push("\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550");
+      lines.push("");
+      lines.push(`Network:        ${network}`);
+      lines.push(`RPC Endpoint:   ${rpcUrl}`);
+      lines.push("");
+      lines.push("\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500");
+      lines.push("  LATENCY METRICS");
+      lines.push("\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500");
+      if (health.currentLatency >= 0) {
+        const color = latencyMonitor_1.LatencyMonitor.getLatencyColor(health.currentLatency);
+        const status = color === "green" ? "Excellent" : color === "orange" ? "Fair" : "Poor";
+        lines.push(`Current:        ${health.currentLatency}ms (${status})`);
+        lines.push(`Average:        ${health.averageLatency}ms`);
+        lines.push(`Min:            ${health.minLatency}ms`);
+        lines.push(`Max:            ${health.maxLatency}ms`);
+      } else {
+        lines.push("Current:        Not available");
+        lines.push(`Last Error:     ${health.lastError || "Unknown error"}`);
+      }
+      lines.push("");
+      lines.push("\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500");
+      lines.push("  RELIABILITY");
+      lines.push("\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500");
+      lines.push(`Success Rate:   ${health.successRate.toFixed(1)}%`);
+      lines.push(`Measurements:   ${health.measurements}`);
+      lines.push("");
+      lines.push("\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500");
+      lines.push("  PERFORMANCE GUIDE");
+      lines.push("\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500");
+      lines.push("< 100ms:        Excellent - Optimal for development");
+      lines.push("100-500ms:      Fair - May experience delays");
+      lines.push("> 500ms:        Poor - Consider switching endpoints");
+      lines.push("");
+      lines.push("\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550");
+      const report = lines.join("\n");
+      const outputChannel = vscode2.window.createOutputChannel("Stellar Network Health");
+      outputChannel.clear();
+      outputChannel.appendLine(report);
+      outputChannel.show();
+      const actions = [
+        { label: "$(refresh) Measure Now", description: "Run immediate latency test" },
+        { label: "$(gear) Change RPC Endpoint", description: "Update RPC URL in settings" },
+        { label: "$(globe) Switch Network", description: "Change Stellar network" }
+      ];
+      const selection = await vscode2.window.showQuickPick(actions, {
+        placeHolder: `Current latency: ${health.currentLatency >= 0 ? health.currentLatency + "ms" : "N/A"}`
+      });
+      if (selection) {
+        if (selection.label.includes("Measure Now")) {
+          vscode2.window.showInformationMessage("Measuring RPC latency...");
+          const result = await monitor.measureLatency();
+          if (result.success) {
+            vscode2.window.showInformationMessage(`Latency: ${result.latency}ms`);
+          } else {
+            vscode2.window.showErrorMessage(`Failed to measure latency: ${result.error}`);
+          }
+        } else if (selection.label.includes("Change RPC")) {
+          vscode2.commands.executeCommand("workbench.action.openSettings", "stellarSuite.rpcUrl");
+        } else if (selection.label.includes("Switch Network")) {
+          vscode2.commands.executeCommand("stellarSuite.switchNetwork");
+        }
+      }
+    }
+    exports2.showNetworkHealth = showNetworkHealth;
+  }
+});
+
 // out/ui/identityStatusBar.js
 var require_identityStatusBar = __commonJS({
   "out/ui/identityStatusBar.js"(exports2) {
@@ -5112,6 +5480,7 @@ var generateBindings_1 = require_generateBindings();
 var runInvoke_1 = require_runInvoke();
 var contractInfo_1 = require_contractInfo();
 var analyzeSecurity_1 = require_analyzeSecurity();
+var showNetworkHealth_1 = require_showNetworkHealth();
 var networkStatusBar_1 = require_networkStatusBar();
 var identityStatusBar_1 = require_identityStatusBar();
 var sidebarView_1 = require_sidebarView();
@@ -5178,6 +5547,9 @@ async function activate(context) {
     const analyzeSecurityCommand = vscode.commands.registerCommand("stellarSuite.analyzeSecurity", (args) => {
       return (0, analyzeSecurity_1.analyzeSecurity)(context, args);
     });
+    const showNetworkHealthCommand = vscode.commands.registerCommand("stellarSuite.showNetworkHealth", () => {
+      return (0, showNetworkHealth_1.showNetworkHealth)();
+    });
     const watcher = vscode.workspace.createFileSystemWatcher("**/{Cargo.toml,*.wasm}");
     watcher.onDidChange(() => {
       if (sidebarProvider) {
@@ -5194,7 +5566,7 @@ async function activate(context) {
         sidebarProvider.refresh();
       }
     });
-    context.subscriptions.push(simulateCommand, deployCommand, refreshCommand, deployFromSidebarCommand, simulateFromSidebarCommand, buildCommand, installCliCommand, switchNetworkCommand, keysGenerateCommand, keysFundCommand, keysListCommand, generateBindingsCommand, runInvokeCommand, contractInfoCommand, analyzeSecurityCommand, watcher);
+    context.subscriptions.push(simulateCommand, deployCommand, refreshCommand, deployFromSidebarCommand, simulateFromSidebarCommand, buildCommand, installCliCommand, switchNetworkCommand, keysGenerateCommand, keysFundCommand, keysListCommand, generateBindingsCommand, runInvokeCommand, contractInfoCommand, analyzeSecurityCommand, showNetworkHealthCommand, watcher);
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
     vscode.window.showErrorMessage(`Stellar Kit activation failed: ${errorMsg}`);
@@ -5202,5 +5574,6 @@ async function activate(context) {
 }
 exports.activate = activate;
 function deactivate() {
+  (0, networkStatusBar_1.disposeNetworkStatusBar)();
 }
 exports.deactivate = deactivate;

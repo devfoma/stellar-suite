@@ -146,7 +146,7 @@ export function parseClippyOutput(output: string, contractName = "hello_world") 
       continue;
     }
 
-    const message = parsed.message;
+    const message = (parsed as CargoCompilerMessage).message;
     const lintCode = message.code?.code;
     if (!lintCode?.startsWith("clippy::")) {
       continue;

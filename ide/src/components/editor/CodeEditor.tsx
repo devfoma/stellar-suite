@@ -5,23 +5,29 @@ import { useWorkspaceStore } from "@/store/workspaceStore";
 import { applyEditsToTree, computeRenameEdits, validateRustIdentifier } from "@/utils/renameProvider";
 import { useDiagnosticsStore as _useDiagnosticsStore } from "@/store/useDiagnosticsStore";
 import { useEditorStore } from "@/store/editorStore";
-import { useUserSettingsStore } from "@/store/useUserSettingsStore";
-import { symbolIndexer } from "@/lib/symbolIndexer"; // 👈 RESTORED
-import { definitionProvider } from "@/lib/definitionProvider"; // 👈 RESTORED
-import { RustSemanticTokensProvider } from "@/lib/semanticTokensProvider"; // 👈 RESTORED
+import { useErrorHelpStore } from "@/store/useErrorHelpStore";
+import { extractErrorCode, hasErrorHelp } from "@/utils/errorCodeExtractor";
 import {
   createRustFoldingRangeProvider,
   RUST_FOLD_REGION_END,
   RUST_FOLD_REGION_START,
 } from "@/lib/rustFolding";
+import { RustSemanticTokensProvider } from "@/lib/semanticTokensProvider";
+import { definitionProvider } from "@/lib/definitionProvider";
+import { symbolIndexer } from "@/lib/symbolIndexer";
 import Editor, { OnChange, OnMount } from "@monaco-editor/react";
 import type * as Monaco from "monaco-editor";
-import React, { Suspense, useEffect, useRef } from "react";
+import React, { Suspense, useEffect, useRef, useState } from "react";
 import { analyzeMathSafety } from "../../lib/mathSafetyAnalyzer";
 import { useMathSafetyStore } from "../../store/useMathSafetyStore";
 import { Breadcrumbs } from "./Breadcrumbs";
+import { GitBlameLines } from "./GitBlameLines";
 import { getAllMonacoCompletions } from "@/utils/proptestSnippets";
-import { useTheme } from "next-themes";
+import { useTestGutter } from "@/hooks/useTestGutter";
+import { GitGutterMarkers } from "./GitGutterMarkers";
+import { git } from "@/lib/git";
+import "@/styles/editor-gutter.css";
+import { referenceProvider } from "@/lib/referenceProvider";
 
 interface CodeEditorProps {
   onCursorChange?: (line: number, col: number) => void;
@@ -34,40 +40,32 @@ const CodeEditor: React.FC<CodeEditorProps> = ({ onCursorChange, onSave }) => {
   const { config, setMathDiagnostics, getAllDiagnostics } = useMathSafetyStore();
   const { getFileCoverage } = useCoverageStore();
   const { setJumpToLine, saveViewState, getViewState } = useEditorStore();
-  const { fontSize, formatOnSave } = useUserSettingsStore(); // 👈 ADDED
-  const { theme: currentTheme } = useTheme(); // 👈 ADDED
-
+  const { openErrorHelp } = useErrorHelpStore();
   const rustProviderRegistered = useRef(false);
-  const monacoRef = useRef<typeof Monaco | null>(null);
-  const editorRef = useRef<Monaco.editor.IStandaloneCodeEditor | null>(null);
-  const semanticProviderRegistered = useRef(false);
+
+    const monacoRef = useRef<typeof Monaco | null>(null);
+    const editorRef = useRef<Monaco.editor.IStandaloneCodeEditor | null>(null);
+    const semanticProviderRegistered = useRef(false);
   const coverageDecorations = useRef<Monaco.editor.IEditorDecorationsCollection | null>(null);
+  const codeActionProviderRegistered = useRef(false);
+
+  // Git gutter: track mounted editor/monaco and HEAD content for active file
+  const [mountedEditor, setMountedEditor] = useState<Monaco.editor.IStandaloneCodeEditor | null>(null);
+  const [mountedMonaco, setMountedMonaco] = useState<typeof Monaco | null>(null);
+  const [headContent, setHeadContent] = useState<string>("");
   const activeFileId = activeTabPath.join("/");
   const activeFileIdRef = useRef(activeFileId);
-  // Keep a live ref to files so the rename provider always sees the latest state
+
+    useTestGutter({ editor: editorRef.current, monaco: monacoRef.current, filePath: activeFileId });
+
+    // Keep a live ref to files so the rename provider always sees the latest state
   const filesRef = useRef(files);
   useEffect(() => { filesRef.current = files; }, [files]);
   useEffect(() => {
     activeFileIdRef.current = activeFileId;
   }, [activeFileId]);
 
-  // Apply font size change to the editor immediately
-  useEffect(() => {
-    if (editorRef.current) {
-      editorRef.current.updateOptions({ fontSize });
-    }
-  }, [fontSize]);
-
-  // Sync theme with Monaco
-  useEffect(() => {
-    const monaco = monacoRef.current;
-    if (!monaco) return;
-    
-    const isDark = currentTheme === "dark" || 
-      (currentTheme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
-    
-    monaco.editor.setTheme(isDark ? "stellar-dark" : "vs");
-  }, [currentTheme]);
+  useTestGutter({ editor: editorRef.current, monaco: monacoRef.current, filePath: activeFileId });
 
   const activeFile = React.useMemo(() => {
     const findNode = (
@@ -95,6 +93,16 @@ const CodeEditor: React.FC<CodeEditorProps> = ({ onCursorChange, onSave }) => {
       }, 500);
     }
   };
+
+  // Fetch HEAD content for the active file whenever the path changes
+  useEffect(() => {
+    if (activeTabPath.length === 0) return;
+    let cancelled = false;
+    git.readTree(activeTabPath)
+      .then((content) => { if (!cancelled) setHeadContent(content); })
+      .catch(() => { if (!cancelled) setHeadContent(""); });
+    return () => { cancelled = true; };
+  }, [activeTabPath]);
 
   // Apply Monaco markers whenever diagnostics or active file changes
   useEffect(() => {
@@ -226,12 +234,16 @@ const CodeEditor: React.FC<CodeEditorProps> = ({ onCursorChange, onSave }) => {
   const handleEditorDidMount: OnMount = (editor, monaco) => {
     monacoRef.current = monaco;
     editorRef.current = editor;
+    setMountedEditor(editor);
+    setMountedMonaco(monaco);
 
     // Initialize symbol indexer and definition provider
     symbolIndexer.indexFiles(files);
     definitionProvider.initialize(editor, monaco);
     definitionProvider.registerDefinitionProvider(monaco);
     definitionProvider.registerOnDefinitionHandler(monaco);
+    referenceProvider.initialize(monaco);
+    referenceProvider.register(monaco);
 
     // Listen for file open requests from definition provider
     const handleFileOpen = (event: CustomEvent) => {
@@ -268,10 +280,15 @@ const CodeEditor: React.FC<CodeEditorProps> = ({ onCursorChange, onSave }) => {
       editor.focus();
     });
 
-    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, async () => {
-      if (useUserSettingsStore.getState().formatOnSave) {
-        await editor.getAction("editor.action.formatDocument")?.run();
-      }
+    const handleJumpToPosition = (event: CustomEvent) => {
+      const { line, column } = event.detail;
+      editor.revealPositionInCenter({ lineNumber: line, column });
+      editor.setPosition({ lineNumber: line, column });
+      editor.focus();
+    };
+    window.addEventListener("jumpToPosition", handleJumpToPosition as EventListener);
+
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
       onSave?.();
     });
 
@@ -335,6 +352,51 @@ const CodeEditor: React.FC<CodeEditorProps> = ({ onCursorChange, onSave }) => {
         semanticProvider,
         legend,
       );
+    }
+
+    // Register code action provider for error help
+    if (!codeActionProviderRegistered.current) {
+      codeActionProviderRegistered.current = true;
+
+      monaco.languages.registerCodeActionProvider("rust", {
+        provideCodeActions: (model, range, context) => {
+          const actions: Monaco.languages.CodeAction[] = [];
+
+          // Check if there are any diagnostics at this position
+          for (const marker of context.markers) {
+            // Extract error code from marker message
+            const errorCode = extractErrorCode(marker.message);
+
+            if (errorCode && hasErrorHelp(errorCode)) {
+              actions.push({
+                title: `💡 Learn More About ${errorCode}`,
+                kind: "quickfix",
+                diagnostics: [marker],
+                isPreferred: true,
+                command: {
+                  id: "stellar.openErrorHelp",
+                  title: "Open Error Help",
+                  arguments: [errorCode],
+                },
+              });
+            }
+          }
+
+          return {
+            actions,
+            dispose: () => {},
+          };
+        },
+      });
+
+      // Register the command to open error help
+      editor.addAction({
+        id: "stellar.openErrorHelp",
+        label: "Open Error Help",
+        run: (_editor, errorCode: string) => {
+          openErrorHelp(errorCode);
+        },
+      });
     }
 
     if (!rustProviderRegistered.current) {
@@ -506,6 +568,7 @@ const CodeEditor: React.FC<CodeEditorProps> = ({ onCursorChange, onSave }) => {
     // Cleanup function
     return () => {
       window.removeEventListener("openFile", handleFileOpen as EventListener);
+      window.removeEventListener("jumpToPosition", handleJumpToPosition as EventListener);
     };
   };
 
@@ -520,6 +583,11 @@ const CodeEditor: React.FC<CodeEditorProps> = ({ onCursorChange, onSave }) => {
   return (
     <div className="h-full w-full flex flex-col overflow-hidden">
       <Breadcrumbs />
+      <GitBlameLines
+        editor={editorRef.current}
+        monaco={monacoRef.current}
+        filePath={activeTabPath}
+      />
       <div
         id="tour-monaco"
         className="flex-1 w-full overflow-hidden relative border-t border-border"
@@ -566,6 +634,13 @@ const CodeEditor: React.FC<CodeEditorProps> = ({ onCursorChange, onSave }) => {
                 "'JetBrains Mono', 'Fira Code', 'Courier New', monospace",
             }}
           />
+          {mountedEditor && mountedMonaco && (
+            <GitGutterMarkers
+              editor={mountedEditor}
+              monaco={mountedMonaco}
+              headContent={headContent}
+            />
+          )}
         </Suspense>
       </div>
     </div>

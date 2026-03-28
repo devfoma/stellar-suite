@@ -75,7 +75,7 @@ function getDurabilityBadge(durability?: string) {
     case "instance":
       return <Badge variant="outline">Instance</Badge>;
     default:
-      return <Badge variant="ghost">Unknown</Badge>;
+      return <Badge variant="secondary">Unknown</Badge>;
   }
 }
 

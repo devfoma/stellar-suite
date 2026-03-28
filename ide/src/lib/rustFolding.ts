@@ -85,7 +85,10 @@ export function computeRustFoldingRanges(source: string): RustFoldingRange[] {
             pendingLineCommentEnd = lineCommentStart;
           }
 
-          if (lineCommentStart === pendingLineCommentEnd + 1) {
+          if (
+            pendingLineCommentEnd !== null &&
+            lineCommentStart === pendingLineCommentEnd + 1
+          ) {
             pendingLineCommentEnd = lineCommentStart;
           } else {
             flushLineCommentGroup();

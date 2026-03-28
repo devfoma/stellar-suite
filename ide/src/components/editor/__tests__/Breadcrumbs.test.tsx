@@ -13,21 +13,24 @@ describe('Breadcrumbs', () => {
   const mockFiles: FileNode[] = [
     {
       name: 'project',
+      type: 'folder',
       children: [
         {
           name: 'src',
+          type: 'folder',
           children: [
-            { name: 'lib.rs', content: 'fn main() {}' },
-            { name: 'utils.rs', content: 'pub fn helper() {}' },
+            { name: 'lib.rs', type: 'file', content: 'fn main() {}' },
+            { name: 'utils.rs', type: 'file', content: 'pub fn helper() {}' },
           ],
         },
         {
           name: 'tests',
+          type: 'folder',
           children: [
-            { name: 'test.rs', content: '#[test]' },
+            { name: 'test.rs', type: 'file', content: '#[test]' },
           ],
         },
-        { name: 'Cargo.toml', content: '[package]' },
+        { name: 'Cargo.toml', type: 'file', content: '[package]' },
       ],
     },
   ];
@@ -148,14 +151,17 @@ describe('Breadcrumbs', () => {
     const deepFiles: FileNode[] = [
       {
         name: 'root',
+        type: 'folder',
         children: [
           {
             name: 'level1',
+            type: 'folder',
             children: [
               {
                 name: 'level2',
+                type: 'folder',
                 children: [
-                  { name: 'deep.rs', content: 'code' },
+                  { name: 'deep.rs', type: 'file', content: 'code' },
                 ],
               },
             ],

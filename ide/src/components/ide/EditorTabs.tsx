@@ -1,18 +1,5 @@
 "use client";
 
-import {
-  Circle,
-  FileCode,
-  FileJson,
-  FileText,
-  Settings,
-  X,
-} from "lucide-react";
-import { KeyboardEvent, useRef } from "react";
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
 import { useWorkspaceStore } from "@/store/workspaceStore";
 import {
   Circle,
@@ -23,6 +10,10 @@ import {
   X,
 } from "lucide-react";
 import { KeyboardEvent, useRef, useCallback } from "react";
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
 
 export interface TabInfo {
   path: string[];

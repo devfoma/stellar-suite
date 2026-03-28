@@ -57,60 +57,60 @@ function xdrToBase64(xdrString: string | Buffer): string {
  */
 function decodeScVal(scVal: xdr.ScVal): { type: ScValType; value: string } {
   switch (scVal.switch().name) {
-    case "void":
+    case "scvVoid":
       return { type: "void", value: "(void)" };
 
-    case "u64":
+    case "scvU64":
       return { type: "u64", value: scVal.u64().toString() };
 
-    case "i64":
+    case "scvI64":
       return { type: "i64", value: scVal.i64().toString() };
 
-    case "u32":
+    case "scvU32":
       return { type: "u32", value: scVal.u32().toString() };
 
-    case "i32":
+    case "scvI32":
       return { type: "i32", value: scVal.i32().toString() };
 
-    case "u128":
+    case "scvU128":
       return { type: "u128", value: scVal.u128().toString() };
 
-    case "i128":
+    case "scvI128":
       return { type: "i128", value: scVal.i128().toString() };
 
-    case "u256":
+    case "scvU256":
       return { type: "u256", value: scVal.u256().toString() };
 
-    case "i256":
+    case "scvI256":
       return { type: "i256", value: scVal.i256().toString() };
 
-    case "bool":
+    case "scvBool":
       return { type: "bool", value: scVal.b() ? "true" : "false" };
 
-    case "symbol":
-      return { type: "symbol", value: scVal.symbol().toString() };
+    case "scvSymbol":
+      return { type: "symbol", value: scVal.sym().toString() };
 
-    case "string":
+    case "scvString":
       return { type: "string", value: scVal.str().toString() };
 
-    case "bytes":
+    case "scvBytes":
       return {
         type: "bytes",
         value: scVal.bytes().toString("base64"),
       };
 
-    case "map": {
-      const mapEntries = scVal.map().entries();
+    case "scvMap": {
+      const mapEntries = scVal.map() ?? [];
       const entries = mapEntries.map((entry) => {
-        const key = decodeScVal(entry.key);
-        const val = decodeScVal(entry.val);
+        const key = decodeScVal(entry.key());
+        const val = decodeScVal(entry.val());
         return `${key.value}: ${val.value}`;
       });
       return { type: "map", value: `{${entries.join(", ")}}` };
     }
 
-    case "vec": {
-      const vecValues = scVal.vec();
+    case "scvVec": {
+      const vecValues = scVal.vec() ?? [];
       const values = vecValues.map((v) => {
         const decoded = decodeScVal(v);
         return decoded.value;
@@ -118,26 +118,23 @@ function decodeScVal(scVal: xdr.ScVal): { type: ScValType; value: string } {
       return { type: "vec", value: `[${values.join(", ")}]` };
     }
 
-    case "address":
+    case "scvAddress":
       return { type: "address", value: scVal.address().toString() };
 
-    case "contract":
-      return { type: "contract", value: scVal.contract().toString() };
+    case "scvContractInstance":
+      return { type: "contract", value: scVal.instance().toString() };
 
-    case "ledgerkeynonce":
-      return { type: "ledgerkeynonce", value: scVal.ledgerkeynonce().toString() };
+    case "scvLedgerKeyContractInstance":
+      return { type: "contract", value: "(ledger contract instance key)" };
 
-    case "duration":
+    case "scvLedgerKeyNonce":
+      return { type: "ledgerkeynonce", value: scVal.nonceKey().toString() };
+
+    case "scvDuration":
       return { type: "duration", value: scVal.duration().toString() };
 
-    case "timepoint":
+    case "scvTimepoint":
       return { type: "timepoint", value: scVal.timepoint().toString() };
-
-    case "noncekey":
-      return { type: "noncekey", value: scVal.noncekey().toString() };
-
-    case "nonceval":
-      return { type: "nonceval", value: scVal.nonceval().toString() };
 
     default:
       return { type: "unknown", value: "(unknown type)" };
@@ -151,13 +148,14 @@ function getDurability(key: xdr.ScVal): "persistent" | "temporary" | "instance" 
   // This is a simplified check - in reality you'd need to parse the full key structure
   // For contract data, the key structure tells us about durability
   try {
-    if (key.map()) {
-      const entries = key.map().entries();
+    const mapVal = key.map();
+    if (mapVal) {
+      const entries = mapVal.entries?.() ?? [];
       // Look for durability indicator in the key
-      for (const entry of entries) {
-        const keyVal = decodeScVal(entry.key);
+      for (const [, entry] of entries) {
+        const keyVal = decodeScVal(entry.key());
         if (keyVal.value === "durability") {
-          const val = decodeScVal(entry.val);
+          const val = decodeScVal(entry.val());
           return val.value as "persistent" | "temporary" | "instance";
         }
       }
@@ -172,22 +170,20 @@ function getDurability(key: xdr.ScVal): "persistent" | "temporary" | "instance" 
  * Transforms a raw ledger entry into a decoded entry with human-readable values
  */
 export function transformLedgerEntry(
-  entry: { key: string; val: string } | { key: Buffer; val: Buffer },
+  entry: { key: string | Buffer; val: string | Buffer },
 ): DecodedLedgerEntry {
   // Decode the key XDR
   const rawKey = xdrToBase64(entry.key);
-  const keyXdr = xdr.ScVal.fromXDR(
-    typeof entry.key === "string" ? entry.key : Buffer.from(entry.key),
-    "base64",
-  );
+  const keyXdr = typeof entry.key === "string"
+    ? xdr.ScVal.fromXDR(entry.key, "base64")
+    : xdr.ScVal.fromXDR(Buffer.from(entry.key), "raw");
   const keyDecoded = decodeScVal(keyXdr);
 
   // Decode the value XDR
   const rawValue = xdrToBase64(entry.val);
-  const valXdr = xdr.ScVal.fromXDR(
-    typeof entry.val === "string" ? entry.val : Buffer.from(entry.val),
-    "base64",
-  );
+  const valXdr = typeof entry.val === "string"
+    ? xdr.ScVal.fromXDR(entry.val, "base64")
+    : xdr.ScVal.fromXDR(Buffer.from(entry.val), "raw");
   const valDecoded = decodeScVal(valXdr);
 
   // Determine durability from the key

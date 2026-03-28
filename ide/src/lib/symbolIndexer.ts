@@ -17,6 +17,7 @@ export interface SymbolInfo {
 export interface SymbolIndex {
   symbols: Map<string, SymbolInfo[]>;
   files: Map<string, SymbolInfo[]>;
+  fileContents: Map<string, string>;
   lastUpdated: number;
 }
 
@@ -24,6 +25,7 @@ class SymbolIndexer {
   private index: SymbolIndex = {
     symbols: new Map(),
     files: new Map(),
+    fileContents: new Map(),
     lastUpdated: Date.now(),
   };
 
@@ -44,19 +46,21 @@ class SymbolIndexer {
             const { files } = data;
             const symbols = [];
             const fileSymbols = new Map();
+            const fileContents = new Map();
             
             files.forEach(file => {
               if (file.type === 'file' && file.content) {
                 const fileKey = file.path.join('/');
                 const extractedSymbols = extractSymbols(file.content, file.path);
                 fileSymbols.set(fileKey, extractedSymbols);
+                fileContents.set(fileKey, file.content);
                 symbols.push(...extractedSymbols);
               }
             });
             
             self.postMessage({
               type: 'INDEX_COMPLETE',
-              data: { symbols, fileSymbols }
+              data: { symbols, fileSymbols, fileContents }
             });
           }
         };
@@ -168,17 +172,21 @@ class SymbolIndexer {
         const { type, data } = e.data;
         
         if (type === 'INDEX_COMPLETE') {
-          this.updateIndex(data.symbols, data.fileSymbols);
+          this.updateIndex(data.symbols, data.fileSymbols, data.fileContents);
           this.indexingPromise = null;
         }
       };
     }
   }
 
-  private updateIndex(symbols: SymbolInfo[], fileSymbols: Map<string, SymbolInfo[]>) {
+  private updateIndex(symbols: SymbolInfo[], fileSymbols: Map<string, SymbolInfo[]>, fileContents?: Map<string, string>) {
     // Clear existing index
     this.index.symbols.clear();
     this.index.files.clear();
+    // Only clear if provided, for backwards compatibility during sync indexing
+    if (fileContents) {
+      this.index.fileContents.clear();
+    }
     
     // Build symbol lookup map
     symbols.forEach(symbol => {
@@ -193,6 +201,12 @@ class SymbolIndexer {
     fileSymbols.forEach((symbols, filePath) => {
       this.index.files.set(filePath, symbols);
     });
+
+    if (fileContents) {
+       fileContents.forEach((content, filePath) => {
+         this.index.fileContents.set(filePath, content);
+       });
+    }
     
     this.index.lastUpdated = Date.now();
   }
@@ -238,6 +252,7 @@ class SymbolIndexer {
         const fileKey = [...path, file.name].join('/');
         const extractedSymbols = this.extractSymbols(file.content, [...path, file.name]);
         fileSymbols.set(fileKey, extractedSymbols);
+        this.index.fileContents.set(fileKey, file.content);
         symbols.push(...extractedSymbols);
       } else if (file.type === 'folder' && file.children) {
         file.children.forEach(child => processFile(child, [...path, file.name]));
@@ -246,6 +261,50 @@ class SymbolIndexer {
 
     files.forEach(file => processFile(file));
     this.updateIndex(symbols, fileSymbols);
+  }
+
+  public findReferences(symbolName: string): any[] {
+    const references: any[] = [];
+    const declarations = this.findDefinition(symbolName);
+    
+    this.index.fileContents.forEach((content, fileKey) => {
+      const filePath = fileKey.split('/');
+      const lines = content.split('\n');
+      
+      lines.forEach((line, lineIdx) => {
+        let pos = 0;
+        while ((pos = line.indexOf(symbolName, pos)) !== -1) {
+          // Verify it's a whole word match
+          const charBefore = pos > 0 ? line[pos - 1] : '';
+          const charAfter = pos + symbolName.length < line.length ? line[pos + symbolName.length] : '';
+          
+          const isWordMatch = /^[a-zA-Z0-9_]*$/.test(charBefore + charAfter) === false 
+                           || (charBefore === '' && charAfter === '')
+                           || (!/^[a-zA-Z0-9_]$/.test(charBefore) && !/^[a-zA-Z0-9_]$/.test(charAfter));
+
+          if (isWordMatch) {
+            const isDeclaration = declarations.some(d => 
+              d.filePath.join('/') === fileKey && d.line === lineIdx + 1 && d.column === pos + 1
+            );
+            
+            references.push({
+              filePath,
+              line: lineIdx + 1,
+              column: pos + 1,
+              range: {
+                start: { line: lineIdx + 1, column: pos + 1 },
+                end: { line: lineIdx + 1, column: pos + 1 + symbolName.length }
+              },
+              lineContent: line.trim(),
+              isDeclaration
+            });
+          }
+          pos += symbolName.length;
+        }
+      });
+    });
+    
+    return references;
   }
 
   private extractSymbols(content: string, filePath: string[]): SymbolInfo[] {

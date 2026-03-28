@@ -148,7 +148,11 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const requestInit =
+  const requestInit: {
+    url: string;
+    headers: Record<string, string>;
+    body: unknown;
+  } =
     providerConfig.provider === "openai"
       ? {
           url: "https://api.openai.com/v1/chat/completions",

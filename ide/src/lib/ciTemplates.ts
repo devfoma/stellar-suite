@@ -156,7 +156,7 @@ jobs:
       - name: Rustfmt Check
         shell: bash
         run: |
-          ${buildCommandScript(manifests, 'cargo fmt --all --manifest-path "$manifest" -- --check')}
+          ${buildCommandScript(manifests, 'cargo fmt --check --manifest-path "\$manifest"')}
 `;
 
   return {
@@ -204,7 +204,7 @@ ci:validate:
     - |
       ${buildCommandScript(manifests, 'cargo clippy --locked --all-targets --all-features --manifest-path "$manifest" -- -D warnings')}
     - |
-      ${buildCommandScript(manifests, 'cargo fmt --all --manifest-path "$manifest" -- --check')}
+      ${buildCommandScript(manifests, 'cargo fmt --check --manifest-path "\$manifest"')}
 `;
 
   return {
@@ -265,7 +265,7 @@ jobs:
       - run:
           name: Rustfmt Check
           command: |
-            ${buildCommandScript(manifests, 'cargo fmt --all --manifest-path "$manifest" -- --check')}
+            ${buildCommandScript(manifests, 'cargo fmt --check --manifest-path "\$manifest"')}
 
       - save_cache:
           key: cargo-cache-v1-{{ .Branch }}

@@ -24,6 +24,7 @@ export type MobilePanel =
 export type SidebarTab =
   | "explorer"
   | "git"
+  | "comments"
   | "deployments"
   | "identities"
   | "multisig"
@@ -38,7 +39,8 @@ export type SidebarTab =
   | "binary-diff"
   | "benchmarks"
   | "audit"
-  | "assets";
+  | "assets"
+  | "tutorials";
 export type BuildState = "idle" | "building" | "success" | "error";
 
 export interface WorkspaceTextFile {

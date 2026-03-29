@@ -23,6 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import { TransactionResultsPane } from "@/components/ide/TransactionResultsPane";
 
 interface ContractPanelProps {
   contractId: string | null;
@@ -585,6 +586,7 @@ export function ContractPanel({ contractId, onInvoke, invokeState, lastInvocatio
                 <Download className="h-3.5 w-3.5" />
                 Export JS Bindings
               </button>
+              <TransactionResultsPane />
               <p className="text-[10px] md:text-xs text-muted-foreground font-semibold uppercase tracking-wider">Resources</p>
               <a href="https://soroban.stellar.org/docs" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-[10px] md:text-xs text-primary hover:underline">
                 <ExternalLink className="h-3 w-3" />

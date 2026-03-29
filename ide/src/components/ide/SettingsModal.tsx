@@ -13,8 +13,9 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
 import { useUserSettingsStore } from "@/store/useUserSettingsStore";
-import { Sun, Moon, Monitor, Type, Save, Globe } from "lucide-react";
+import { Sun, Moon, Monitor, Type, Save, Globe, Variable } from "lucide-react";
 import { useTheme } from "next-themes";
+import { EnvVarManager } from "@/components/settings/EnvVarManager";
 
 interface SettingsModalProps {
   open: boolean;
@@ -42,9 +43,10 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
         </DialogHeader>
 
         <Tabs defaultValue="general" className="w-full mt-4">
-          <TabsList className="grid w-full grid-cols-3 bg-muted/50 p-1">
+          <TabsList className="grid w-full grid-cols-4 bg-muted/50 p-1">
             <TabsTrigger value="general" className="data-[state=active]:bg-background">General</TabsTrigger>
             <TabsTrigger value="editor" className="data-[state=active]:bg-background">Editor</TabsTrigger>
+            <TabsTrigger value="environment" className="data-[state=active]:bg-background">Environment</TabsTrigger>
             <TabsTrigger value="network" className="data-[state=active]:bg-background">Network</TabsTrigger>
           </TabsList>
 
@@ -123,6 +125,10 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                 className="data-[state=checked]:bg-primary"
               />
             </div>
+          </TabsContent>
+
+          <TabsContent value="environment" className="space-y-4 py-6 animate-in fade-in-50 duration-300">
+            <EnvVarManager />
           </TabsContent>
 
           <TabsContent value="network" className="space-y-4 py-6 animate-in fade-in-50 duration-300">

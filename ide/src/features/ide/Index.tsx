@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { nativeToScVal } from "@stellar/stellar-sdk";
 import {
   PanelRightClose,
   PanelRightOpen,
@@ -18,6 +19,7 @@ import { MultisigView } from "@/components/ide/MultisigView";
 import { LiquidityPoolSimulator } from "@/components/ide/LiquidityPoolSimulator";
 import { GitPane } from "@/components/ide/GitPane";
 import { DiffEditorPane } from "@/components/editor/DiffEditorPane";
+import { CommentsPane } from "@/components/editor/CommentsPane";
 // import { EditorTabs } from "@/components/ide/EditorTabs";
 import { FileExplorer } from "@/components/ide/FileExplorer";
 import { IdentitiesView } from "@/components/ide/IdentitiesView";
@@ -40,6 +42,11 @@ import { Toolbar } from "@/components/ide/Toolbar";
 import { OutlineView } from "@/components/sidebar/OutlineView";
 import { FuzzingPanel } from "@/components/sidebar/FuzzingPanel";
 import { AssetManager } from "@/components/sidebar/AssetManager";
+<<<<<<< HEAD
+=======
+import { TutorialsPane } from "@/components/sidebar/TutorialsPane";
+// import { ActivityBar } from "@/components/layout/ActivityBar";
+>>>>>>> upstream/main
 import { StarterProjectWizard } from "@/components/modals/StarterProjectWizard";
 import { ActivityBar } from "@/components/layout/ActivityBar";
 import { NETWORK_CONFIG, type NetworkKey } from "@/lib/networkConfig";
@@ -64,11 +71,20 @@ import { useErrorHelpStore } from "@/store/useErrorHelpStore";
 import ErrorHelpPanel from "@/components/ide/ErrorHelpPanel";
 import { useCloudSyncStore } from "@/store/useCloudSyncStore";
 import { ConflictModal } from "@/components/cloud/ConflictModal";
+<<<<<<< HEAD
 import { useAuth } from "@/hooks/useAuth";
 import { useNotificationStore } from "@/store/useNotificationStore";
+=======
+import { useTransactionResultsStore } from "@/store/useTransactionResultsStore";
+import {
+  createWorkspaceSnapshot,
+  tutorialEngine,
+} from "@/lib/tutorials/tutorialEngine";
+>>>>>>> upstream/main
 import { parseCargoAuditOutput } from "@/utils/cargoAuditParser";
 import { parseMixedOutput } from "@/utils/cargoParser";
 import { parseClippyOutput, type ClippyLint } from "@/utils/clippyParser";
+import { decodeScValBase64 } from "@/utils/scValDecoder";
 import {
   createStreamProcessor,
   readCompileResponse,
@@ -85,6 +101,9 @@ import {
 
 const COMPILE_API_URL =
   process.env.NEXT_PUBLIC_COMPILE_API_URL ?? "/api/compile";
+
+const createTxHash = () =>
+  crypto.randomUUID().replace(/-/g, "").slice(0, 64).toUpperCase();
 
 const toCompilePath = (pathParts: string[]) => {
   if (pathParts.length === 2 && pathParts[1].endsWith(".rs")) {
@@ -266,6 +285,8 @@ export default function Index() {
     message: string;
   }>({ phase: "idle", message: "Invoke" });
 
+  const appendResultLog = useTransactionResultsStore((state) => state.appendLog);
+
   const [clippyLints, setClippyLints] = useState<ClippyLint[]>([]);
   const [isRunningClippy, setIsRunningClippy] = useState(false);
   const [clippyError, setClippyError] = useState<string | null>(null);
@@ -325,9 +346,26 @@ export default function Index() {
       setLeftSidebarTab("references");
       setShowExplorer(true);
     };
+<<<<<<< HEAD
 
+=======
+    const handleCommentsPane = () => {
+      setLeftSidebarTab("comments");
+      setShowExplorer(true);
+    };
+    const handleTutorialsPane = () => {
+      setLeftSidebarTab("tutorials");
+      setShowExplorer(true);
+    };
+>>>>>>> upstream/main
     window.addEventListener("referencesFound", handleRefTab);
-    return () => window.removeEventListener("referencesFound", handleRefTab);
+    window.addEventListener("comments:open-pane", handleCommentsPane);
+    window.addEventListener("tutorials:open-pane", handleTutorialsPane);
+    return () => {
+      window.removeEventListener("referencesFound", handleRefTab);
+      window.removeEventListener("comments:open-pane", handleCommentsPane);
+      window.removeEventListener("tutorials:open-pane", handleTutorialsPane);
+    };
   }, [setLeftSidebarTab, setShowExplorer]);
 
   const contractName = useMemo(
@@ -951,6 +989,8 @@ export default function Index() {
         return;
       }
 
+      const start = performance.now();
+      const timestamp = new Date().toISOString();
       setTerminalExpanded(true);
       const signer =
         activeContext?.type === "web-wallet"
@@ -960,19 +1000,68 @@ export default function Index() {
       appendTerminalOutput(`Invoking ${fn}(${args}) as ${signer}...\r\n`);
       setInvokeState({ phase: "preparing", message: "Preparing..." });
 
-      setTimeout(() => {
-        appendTerminalOutput('Result: ["ok"]\r\n');
+      try {
+        // Simulated invocation response — replace with real pipeline when available.
+        const simulatedScVal = nativeToScVal(["Hello", "Dev"]);
+        const resultScValBase64 = simulatedScVal.toXDR("base64");
+        const { value, error } = decodeScValBase64(resultScValBase64);
+        const txHash = createTxHash();
+
+        appendTerminalOutput(
+          `Result: ${JSON.stringify(value ?? ["Hello", "Dev"])}\r\n`,
+        );
+        appendTerminalOutput(`Tx: ${txHash}\r\n`);
+
+        appendResultLog({
+          id: crypto.randomUUID(),
+          timestamp,
+          network: network as NetworkKey,
+          contractId,
+          fnName: fn,
+          argsJson: args,
+          status: "success",
+          txHash,
+          resultScValBase64,
+          decodedResult: value ?? null,
+          errorMessage: error ?? null,
+          durationMs: Math.round(performance.now() - start),
+          source: "simulate",
+        });
+
         setInvokeState({ phase: "success", message: "Confirmed" });
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Invocation failed";
+        appendTerminalOutput(`Invoke failed: ${message}\r\n`);
+        appendResultLog({
+          id: crypto.randomUUID(),
+          timestamp,
+          network: network as NetworkKey,
+          contractId,
+          fnName: fn,
+          argsJson: args,
+          status: "error",
+          txHash: null,
+          resultScValBase64: null,
+          decodedResult: null,
+          errorMessage: message,
+          durationMs: Math.round(performance.now() - start),
+          source: "simulate",
+        });
+        setInvokeState({ phase: "failed", message: "Failed" });
+      } finally {
         setTimeout(() => {
           setInvokeState({ phase: "idle", message: "Invoke" });
         }, 1500);
-      }, 900);
+      }
     },
     [
       activeContext,
       activeIdentity,
+      appendResultLog,
       appendTerminalOutput,
       contractId,
+      network,
       setTerminalExpanded,
     ],
   );
@@ -1067,6 +1156,7 @@ export default function Index() {
             {leftSidebarTab === "tests" ? <TestingSidebar /> : null}
             {leftSidebarTab === "fuzzing" ? <FuzzingPanel /> : null}
             {leftSidebarTab === "git" ? <GitPane /> : null}
+            {leftSidebarTab === "comments" ? <CommentsPane /> : null}
             {leftSidebarTab === "references" ? <ReferencesPane /> : null}
             {leftSidebarTab === "binary-diff" ? (
               <div className="flex h-full flex-col space-y-4 bg-sidebar p-4">
@@ -1097,6 +1187,7 @@ export default function Index() {
             ) : null}
             {leftSidebarTab === "audit" ? <AuditLogView /> : null}
             {leftSidebarTab === "assets" ? <AssetManager /> : null}
+            {leftSidebarTab === "tutorials" ? <TutorialsPane /> : null}
           </aside>
         ) : null}
 
@@ -1114,8 +1205,13 @@ export default function Index() {
               <CodeEditor />
             )}
           </div>
+<<<<<<< HEAD
 
           <div className="flex h-56 shrink-0 flex-col border-t border-border">
+=======
+          <div className="h-32 md:h-56 shrink-0 border-t border-border flex flex-col">
+            {/* Bottom panel tab bar */}
+>>>>>>> upstream/main
             <div
               className="flex shrink-0 items-center border-b border-border bg-secondary"
               role="tablist"
@@ -1198,9 +1294,7 @@ export default function Index() {
         </aside>
       </div>
 
-      <div className="hidden md:block">
-        <StatusBar language={activeFileContext?.language} />
-      </div>
+      <StatusBar language={activeFileContext?.language} />
 
       <StarterProjectWizard open={wizardOpen} onOpenChange={setWizardOpen} />
 

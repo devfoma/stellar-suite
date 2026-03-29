@@ -19,12 +19,15 @@ import {
   GitMerge,
   TrendingUp,
   ClipboardList,
+  MessageSquare,
+  GraduationCap,
 } from "lucide-react";
 import { ReactNode } from "react";
 
 export type ActivityTab =
   | "explorer"
   | "git"
+  | "comments"
   | "deployments"
   | "identities"
   | "multisig"
@@ -40,7 +43,8 @@ export type ActivityTab =
   | "benchmarks"
   | "inspector"
   | "audit"
-  | "assets";
+  | "assets"
+  | "tutorials";
 
 interface ActivityBarProps {
   activeTab: ActivityTab;
@@ -68,6 +72,12 @@ const tabs: ActivityBarTab[] = [
     icon: <History className="h-5 w-5 rotate-180" />, // Use History rotated as a placeholder for Git if GitBranch is not available or just to match look
     label: "Source Control",
     title: "Source Control (Git)",
+  },
+  {
+    id: "comments",
+    icon: <MessageSquare className="h-5 w-5" />,
+    label: "Comments",
+    title: "Line Comments and Annotations",
   },
   {
     id: "deployments",
@@ -152,6 +162,12 @@ const tabs: ActivityBarTab[] = [
     icon: <ClipboardList className="h-5 w-5" />,
     label: "Audit Log",
     title: "Project Audit Log",
+  },
+  {
+    id: "tutorials",
+    icon: <GraduationCap className="h-5 w-5" />,
+    label: "Tutorials",
+    title: "Interactive Tutorials",
   },
 ];
 

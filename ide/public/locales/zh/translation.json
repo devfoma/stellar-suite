@@ -1,0 +1,24 @@
+{
+  "general": {
+    "settings": "设置",
+    "appearance": "外观",
+    "language": "语言",
+    "offline_status": "离线模式",
+    "offline_syncing": "同步中...",
+    "online": "已连接",
+    "offline": "你目前处于离线状态。某些功能（构建/部署）将无法使用。",
+    "crash_title": "出错了",
+    "crash_description": "IDE 遇到严重异常。我们的诊断系统已捕获该错误。",
+    "send_crash_report": "发送崩溃报告",
+    "report_sent": "谢谢！我们的工程师将进行调查。"
+  },
+  "editor": {
+    "font_size": "编辑器字体大小",
+    "format_on_save": "保存时格式化"
+  },
+  "network": {
+    "build": "构建",
+    "deploy": "部署",
+    "offline_warning": "离线时无法执行网络操作。"
+  }
+}

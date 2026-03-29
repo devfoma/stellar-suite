@@ -1,0 +1,24 @@
+{
+  "general": {
+    "settings": "Configurações",
+    "appearance": "Aparência",
+    "language": "Idioma",
+    "offline_status": "Modo offline",
+    "offline_syncing": "Sincronizando as alterações...",
+    "online": "Conectado",
+    "offline": "Atualmente você está desconectado. Alguns recursos (Compilar/Implantar) não estarão disponíveis.",
+    "crash_title": "Algo deu errado",
+    "crash_description": "O IDE encontrou uma exceção fatal. Nossos diagnósticos capturaram o erro.",
+    "send_crash_report": "Enviar relatório de falhas",
+    "report_sent": "Obrigado! Nossos engenheiros irão investigar."
+  },
+  "editor": {
+    "font_size": "Tamanho da fonte do editor",
+    "format_on_save": "Formatar ao salvar"
+  },
+  "network": {
+    "build": "Compilar",
+    "deploy": "Implantar",
+    "offline_warning": "Não é possível realizar ações de rede quando se está offline."
+  }
+}

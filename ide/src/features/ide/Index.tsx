@@ -42,11 +42,8 @@ import { Toolbar } from "@/components/ide/Toolbar";
 import { OutlineView } from "@/components/sidebar/OutlineView";
 import { FuzzingPanel } from "@/components/sidebar/FuzzingPanel";
 import { AssetManager } from "@/components/sidebar/AssetManager";
-<<<<<<< HEAD
-=======
 import { TutorialsPane } from "@/components/sidebar/TutorialsPane";
 // import { ActivityBar } from "@/components/layout/ActivityBar";
->>>>>>> upstream/main
 import { StarterProjectWizard } from "@/components/modals/StarterProjectWizard";
 import { ActivityBar } from "@/components/layout/ActivityBar";
 import { NETWORK_CONFIG, type NetworkKey } from "@/lib/networkConfig";
@@ -71,16 +68,15 @@ import { useErrorHelpStore } from "@/store/useErrorHelpStore";
 import ErrorHelpPanel from "@/components/ide/ErrorHelpPanel";
 import { useCloudSyncStore } from "@/store/useCloudSyncStore";
 import { ConflictModal } from "@/components/cloud/ConflictModal";
-<<<<<<< HEAD
 import { useAuth } from "@/hooks/useAuth";
 import { useNotificationStore } from "@/store/useNotificationStore";
-=======
 import { useTransactionResultsStore } from "@/store/useTransactionResultsStore";
 import {
   createWorkspaceSnapshot,
   tutorialEngine,
 } from "@/lib/tutorials/tutorialEngine";
->>>>>>> upstream/main
+import { usePostBuildHooksStore } from "@/store/usePostBuildHooksStore";
+import { runPostBuildHooks } from "@/lib/postBuildHookRunner";
 import { parseCargoAuditOutput } from "@/utils/cargoAuditParser";
 import { parseMixedOutput } from "@/utils/cargoParser";
 import { parseClippyOutput, type ClippyLint } from "@/utils/clippyParser";
@@ -89,6 +85,7 @@ import {
   createStreamProcessor,
   readCompileResponse,
 } from "@/utils/compileStream";
+import { useTranslation } from "react-i18next";
 import {
   createStructuredTestOutputFromCargoRun,
   createSimulatedCargoTestOutput,
@@ -173,19 +170,17 @@ const formatRunTime = () =>
     second: "2-digit",
   });
 
-// ---------------------------------------------------------------------------
-// TestingSidebar — three sub-tabs: Snippets | Templates | Generate
-// ---------------------------------------------------------------------------
 
 function TestingSidebar() {
+  const { t } = useTranslation();
   const [tab, setTab] = useState<"snippets" | "templates" | "generate">("snippets");
 
   return (
     <div className="flex h-full flex-col">
       <div className="flex shrink-0 border-b border-sidebar-border">
-        {(["snippets", "templates", "generate"] as const).map((t) => (
+        {(["snippets", "templates", "generate"] as const).map((tValue) => (
           <button
-            key={t}
+            key={tValue}
             type="button"
             onClick={() => setTab(t)}
             className={`flex-1 border-b-2 py-1.5 font-mono text-[10px] uppercase tracking-wider transition-colors ${
@@ -194,7 +189,7 @@ function TestingSidebar() {
                 : "border-transparent text-muted-foreground hover:text-foreground"
             }`}
           >
-            {t === "snippets" ? "Snippets" : t === "templates" ? "Templates" : "Generate"}
+            {tValue === "snippets" ? "Snippets" : tValue === "templates" ? "Templates" : "Generate"}
           </button>
         ))}
       </div>
@@ -208,6 +203,7 @@ function TestingSidebar() {
 }
 
 export default function Index() {
+  const { t } = useTranslation();
   const {
     files,
     activeTabPath,
@@ -286,6 +282,7 @@ export default function Index() {
   }>({ phase: "idle", message: "Invoke" });
 
   const appendResultLog = useTransactionResultsStore((state) => state.appendLog);
+  const postBuildHooks = usePostBuildHooksStore((state) => state.hooks);
 
   const [clippyLints, setClippyLints] = useState<ClippyLint[]>([]);
   const [isRunningClippy, setIsRunningClippy] = useState(false);
@@ -346,9 +343,7 @@ export default function Index() {
       setLeftSidebarTab("references");
       setShowExplorer(true);
     };
-<<<<<<< HEAD
 
-=======
     const handleCommentsPane = () => {
       setLeftSidebarTab("comments");
       setShowExplorer(true);
@@ -357,7 +352,6 @@ export default function Index() {
       setLeftSidebarTab("tutorials");
       setShowExplorer(true);
     };
->>>>>>> upstream/main
     window.addEventListener("referencesFound", handleRefTab);
     window.addEventListener("comments:open-pane", handleCommentsPane);
     window.addEventListener("tutorials:open-pane", handleTutorialsPane);
@@ -384,11 +378,16 @@ export default function Index() {
   );
 
   const handleCompile = useCallback(async () => {
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      toast.error(t('network.offline_warning', 'Cannot perform network actions while offline.'));
+      return;
+    }
+
     setIsCompiling(true);
     setBuildState("building");
     clearDiagnostics();
     setTerminalExpanded(true);
-    appendTerminalOutput("> Compiling contract...\r\n");
+    appendTerminalOutput(`> ${t('network.build', 'Compiling contract')}...\r\n`);
     appendTerminalOutput(`Target network: ${network}\r\n`);
 
     const processor = createStreamProcessor({
@@ -412,7 +411,7 @@ export default function Index() {
         );
       }
 
-      appendTerminalOutput("✓ Compilation finished.\r\n");
+      appendTerminalOutput(`✓ ${t('general.success', 'Compilation finished')}.\r\n`);
       setBuildState("success");
       addAuditLog({
         category: "build",
@@ -423,6 +422,7 @@ export default function Index() {
         details: "Contract compiled successfully",
         rawJson: { contractName, network, timestamp: new Date().toISOString() },
       });
+      await runPostBuildHooks(postBuildHooks, appendTerminalOutput);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Build failed";
       appendTerminalOutput(`Build failed: ${message}\r\n`);
@@ -453,10 +453,12 @@ export default function Index() {
     compilePayload,
     contractName,
     network,
+    postBuildHooks,
     setBuildState,
     setDiagnostics,
     setIsCompiling,
     setTerminalExpanded,
+    t,
   ]);
 
   const handleRunClippy = useCallback(async () => {
@@ -692,6 +694,11 @@ export default function Index() {
   );
 
   const handleDeploy = useCallback(async () => {
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      toast.error(t('network.offline_warning', 'Cannot perform network actions while offline.'));
+      return;
+    }
+
     setDeployedContractId(null);
     openDeployModal();
     setDeploymentStep("simulating");
@@ -702,7 +709,7 @@ export default function Index() {
 
     try {
       setDeploymentStep("uploading");
-      appendTerminalOutput("> Compiling and uploading WASM…\r\n");
+      appendTerminalOutput(`> ${t('network.deploy', 'Compiling and uploading WASM')}…\r\n`);
 
       const response = await fetch(COMPILE_API_URL, {
         method: "POST",
@@ -1205,13 +1212,8 @@ export default function Index() {
               <CodeEditor />
             )}
           </div>
-<<<<<<< HEAD
 
           <div className="flex h-56 shrink-0 flex-col border-t border-border">
-=======
-          <div className="h-32 md:h-56 shrink-0 border-t border-border flex flex-col">
-            {/* Bottom panel tab bar */}
->>>>>>> upstream/main
             <div
               className="flex shrink-0 items-center border-b border-border bg-secondary"
               role="tablist"

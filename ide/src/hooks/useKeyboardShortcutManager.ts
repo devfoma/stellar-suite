@@ -89,6 +89,12 @@ export const useKeyboardShortcutManager = () => {
       metaKey: true,
       action: openHotkeysModal,
       description: 'Show keyboard shortcuts'
+    },
+    {
+      key: '?',
+      shiftKey: true,
+      action: openHotkeysModal,
+      description: 'Show keyboard shortcuts'
     }
   ];
 

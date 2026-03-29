@@ -12,10 +12,18 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
-import { useUserSettingsStore } from "@/store/useUserSettingsStore";
-import { Sun, Moon, Monitor, Type, Save, Globe, Variable } from "lucide-react";
+import { useUserSettingsStore, Language } from "@/store/useUserSettingsStore";
+import { Sun, Moon, Monitor, Type, Save, Globe, Variable, Languages } from "lucide-react";
 import { useTheme } from "next-themes";
 import { EnvVarManager } from "@/components/settings/EnvVarManager";
+import { useTranslation } from "react-i18next";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface SettingsModalProps {
   open: boolean;
@@ -23,55 +31,92 @@ interface SettingsModalProps {
 }
 
 export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
+  const { t } = useTranslation();
   const [isMounted, setIsMounted] = React.useState(false);
   React.useEffect(() => setIsMounted(true), []);
 
-  const { fontSize, formatOnSave, setFontSize, setFormatOnSave } =
+  const { fontSize, formatOnSave, language, setFontSize, setFormatOnSave, setLanguage } =
     useUserSettingsStore();
   const { theme, setTheme } = useTheme();
 
   if (!isMounted) return null;
 
+  const languages = [
+    { code: 'en', name: 'English' },
+    { code: 'es', name: 'Español' },
+    { code: 'zh', name: '中文' },
+    { code: 'pt', name: 'Português' },
+    { code: 'ar', name: 'العربية (RTL)' },
+  ];
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl bg-background border-border shadow-2xl">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-bold">Settings</DialogTitle>
+          <DialogTitle className="text-2xl font-bold">{t('general.settings')}</DialogTitle>
           <DialogDescription className="text-muted-foreground">
-            Customize your IDE experience. Changes are persisted automatically.
+            {t('general.settings_description', 'Customize your IDE experience. Changes are persisted automatically.')}
           </DialogDescription>
         </DialogHeader>
 
         <Tabs defaultValue="general" className="w-full mt-4">
           <TabsList className="grid w-full grid-cols-4 bg-muted/50 p-1">
-            <TabsTrigger value="general" className="data-[state=active]:bg-background">General</TabsTrigger>
-            <TabsTrigger value="editor" className="data-[state=active]:bg-background">Editor</TabsTrigger>
-            <TabsTrigger value="environment" className="data-[state=active]:bg-background">Environment</TabsTrigger>
-            <TabsTrigger value="network" className="data-[state=active]:bg-background">Network</TabsTrigger>
+            <TabsTrigger value="general" className="data-[state=active]:bg-background">{t('general.general', 'General')}</TabsTrigger>
+            <TabsTrigger value="editor" className="data-[state=active]:bg-background">{t('general.editor', 'Editor')}</TabsTrigger>
+            <TabsTrigger value="environment" className="data-[state=active]:bg-background">{t('general.environment', 'Environment')}</TabsTrigger>
+            <TabsTrigger value="network" className="data-[state=active]:bg-background">{t('general.network', 'Network')}</TabsTrigger>
           </TabsList>
 
           <TabsContent value="general" className="space-y-6 py-6 animate-in fade-in-50 duration-300">
             <div className="space-y-4">
-              <Label className="text-base font-semibold">Appearance</Label>
+              <Label className="text-base font-semibold">{t('general.appearance')}</Label>
               <div className="grid grid-cols-3 gap-4">
-                {(["light", "dark", "system"] as const).map((t) => (
+                {(["light", "dark", "system"] as const).map((tValue) => (
                   <button
-                    key={t}
-                    onClick={() => setTheme(t)}
+                    key={tValue}
+                    onClick={() => setTheme(tValue)}
                     className={`flex flex-col items-center gap-3 p-4 rounded-xl border-2 transition-all duration-200 ${
-                      theme === t
+                      theme === tValue
                         ? "border-primary bg-primary/10 ring-2 ring-primary/20"
                         : "border-border bg-card hover:border-primary/50 hover:bg-muted/50"
                     }`}
                   >
-                    <div className={`p-2 rounded-lg ${theme === t ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground"}`}>
-                      {t === "light" && <Sun className="h-6 w-6" />}
-                      {t === "dark" && <Moon className="h-6 w-6" />}
-                      {t === "system" && <Monitor className="h-6 w-6" />}
+                    <div className={`p-2 rounded-lg ${theme === tValue ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground"}`}>
+                      {tValue === "light" && <Sun className="h-6 w-6" />}
+                      {tValue === "dark" && <Moon className="h-6 w-6" />}
+                      {tValue === "system" && <Monitor className="h-6 w-6" />}
                     </div>
-                    <span className="text-sm font-medium capitalize">{t}</span>
+                    <span className="text-sm font-medium capitalize">{tValue}</span>
                   </button>
                 ))}
+              </div>
+            </div>
+
+            <div className="space-y-4 pt-4 border-t border-border">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <Label className="text-base font-semibold flex items-center gap-2">
+                    <Languages className="h-4 w-4 text-primary" /> {t('general.language')}
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    {t('general.language_description', 'Choose your preferred interface language.')}
+                  </p>
+                </div>
+                <Select
+                  value={language}
+                  onValueChange={(val: Language) => setLanguage(val)}
+                >
+                  <SelectTrigger className="w-[180px] bg-muted/50 border-border">
+                    <SelectValue placeholder="Select Language" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-background border-border">
+                    {languages.map((lang) => (
+                      <SelectItem key={lang.code} value={lang.code} className="hover:bg-muted font-medium">
+                        {lang.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           </TabsContent>
@@ -81,10 +126,10 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
               <div className="flex items-center justify-between">
                 <div className="space-y-1">
                   <Label className="text-base font-semibold flex items-center gap-2">
-                    <Type className="h-4 w-4 text-primary" /> Editor Font Size
+                    <Type className="h-4 w-4 text-primary" /> {t('editor.font_size')}
                   </Label>
                   <p className="text-sm text-muted-foreground">
-                    Adjust the text size in the code editor.
+                    {t('editor.font_size_description', 'Adjust the text size in the code editor.')}
                   </p>
                 </div>
                 <div className="flex items-center gap-3">
@@ -113,10 +158,10 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
             <div className="flex items-center justify-between p-4 rounded-xl bg-muted/30 border border-border/50">
               <div className="space-y-1">
                 <Label className="text-base font-semibold flex items-center gap-2">
-                  <Save className="h-4 w-4 text-primary" /> Format on Save
+                  <Save className="h-4 w-4 text-primary" /> {t('editor.format_on_save')}
                 </Label>
                 <p className="text-sm text-muted-foreground">
-                  Automatically format code when you save a file.
+                  {t('editor.format_on_save_description', 'Automatically format code when you save a file.')}
                 </p>
               </div>
               <Switch
@@ -136,9 +181,9 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
               <div className="inline-flex p-3 rounded-full bg-muted mb-4">
                 <Globe className="h-8 w-8 text-muted-foreground" />
               </div>
-              <h3 className="text-lg font-semibold mb-1">Advanced Network Config</h3>
+              <h3 className="text-lg font-semibold mb-1">{t('general.network')}</h3>
               <p className="text-muted-foreground max-w-xs mx-auto">
-                Custom RPC endpoints and specialized network headers will be configurable here.
+                {t('general.network_description', 'Custom RPC endpoints and specialized network headers will be configurable here.')}
               </p>
             </div>
           </TabsContent>

@@ -21,11 +21,20 @@ export const metadata: Metadata = {
   },
 };
 
+import { ErrorBoundary } from "@/components/ide/ErrorBoundary";
+import { AppStatusProvider } from "@/components/providers/AppStatusProvider";
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <body className="min-h-screen bg-background text-foreground antialiased">
-        <AuthSessionProvider>{children}</AuthSessionProvider>
+        <AuthSessionProvider>
+          <ErrorBoundary>
+            <AppStatusProvider>
+              {children}
+            </AppStatusProvider>
+          </ErrorBoundary>
+        </AuthSessionProvider>
       </body>
     </html>
   );

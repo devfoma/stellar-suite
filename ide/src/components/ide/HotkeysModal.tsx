@@ -5,7 +5,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Keyboard, Command } from "lucide-react";
+import { Keyboard } from "lucide-react";
 import { useEffect, useState } from "react";
 
 interface HotkeysModalProps {
@@ -13,19 +13,35 @@ interface HotkeysModalProps {
   onOpenChange: (open: boolean) => void;
 }
 
+type ShortcutCategory = "Navigation" | "Editor" | "Git" | "Build";
+
 interface Shortcut {
-  keys: string[];
+  keys: {
+    mac: string[];
+    other: string[];
+  };
   description: string;
+  category: ShortcutCategory;
 }
 
 const shortcuts: Shortcut[] = [
-  { keys: ["⌘", "S"], description: "Save current file" },
-  { keys: ["⌘", "B"], description: "Build project" },
-  { keys: ["⌘", "P"], description: "Open file finder" },
-  { keys: ["⌘", "Shift", "F"], description: "Search in files" },
-  { keys: ["⌘", "K"], description: "Toggle command palette" },
-  { keys: ["⌘", "/"], description: "Show keyboard shortcuts" },
-  { keys: ["Esc"], description: "Close modal/palette" },
+  // Navigation
+  { keys: { mac: ["⌘", "P"], other: ["Ctrl", "P"] }, description: "Open file finder", category: "Navigation" },
+  { keys: { mac: ["⌘", "⇧", "F"], other: ["Ctrl", "Shift", "F"] }, description: "Search in files", category: "Navigation" },
+  { keys: { mac: ["⌘", "K"], other: ["Ctrl", "K"] }, description: "Toggle command palette", category: "Navigation" },
+  
+  // Editor
+  { keys: { mac: ["⌘", "S"], other: ["Ctrl", "S"] }, description: "Save current file", category: "Editor" },
+  { keys: { mac: ["⌘", "/"], other: ["Ctrl", "/"] }, description: "Show keyboard shortcuts", category: "Editor" },
+  { keys: { mac: ["?"], other: ["?"] }, description: "Show keyboard shortcuts (Alternative)", category: "Editor" },
+  { keys: { mac: ["Esc"], other: ["Esc"] }, description: "Close modal/palette", category: "Editor" },
+  
+  // Build
+  { keys: { mac: ["⌘", "B"], other: ["Ctrl", "B"] }, description: "Build project", category: "Build" },
+  
+  // Git
+  { keys: { mac: ["⌘", "↵"], other: ["Ctrl", "Enter"] }, description: "Commit changes", category: "Git" },
+  { keys: { mac: ["⌘", "⇧", "G"], other: ["Ctrl", "Shift", "G"] }, description: "Open source control", category: "Git" },
 ];
 
 const KeyCombo = ({ keys }: { keys: string[] }) => {
@@ -46,15 +62,22 @@ const KeyCombo = ({ keys }: { keys: string[] }) => {
 };
 
 export const HotkeysModal = ({ open, onOpenChange }: HotkeysModalProps) => {
+  const [isMac, setIsMac] = useState(false);
+
   useEffect(() => {
+    // Basic OS detection
+    setIsMac(typeof navigator !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.platform));
+    
     const handleOpenHotkeys = () => onOpenChange(true);
     window.addEventListener('ide:open-hotkeys', handleOpenHotkeys);
     return () => window.removeEventListener('ide:open-hotkeys', handleOpenHotkeys);
   }, [onOpenChange]);
 
+  const categories: ShortcutCategory[] = ["Navigation", "Editor", "Git", "Build"];
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Keyboard className="h-5 w-5" />
@@ -64,20 +87,30 @@ export const HotkeysModal = ({ open, onOpenChange }: HotkeysModalProps) => {
             Common keyboard shortcuts to navigate the IDE faster
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-3">
-          {shortcuts.map((shortcut, index) => (
-            <div key={index} className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-800 last:border-0">
-              <span className="text-sm text-gray-700 dark:text-gray-300">
-                {shortcut.description}
-              </span>
-              <KeyCombo keys={shortcut.keys} />
-            </div>
-          ))}
-        </div>
-        <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-          <p className="text-xs text-gray-500 dark:text-gray-400">
-            Note: ⌘ represents the Command key on Mac or Ctrl key on Windows/Linux
-          </p>
+        
+        <div className="space-y-6 mt-2">
+          {categories.map(category => {
+            const categoryShortcuts = shortcuts.filter(s => s.category === category);
+            if (categoryShortcuts.length === 0) return null;
+            
+            return (
+              <div key={category} className="space-y-2">
+                <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100 border-b border-gray-200 dark:border-gray-700 pb-1">
+                  {category}
+                </h4>
+                <div className="space-y-1">
+                  {categoryShortcuts.map((shortcut, index) => (
+                    <div key={index} className="flex items-center justify-between py-1.5">
+                      <span className="text-sm text-gray-700 dark:text-gray-300">
+                        {shortcut.description}
+                      </span>
+                      <KeyCombo keys={isMac ? shortcut.keys.mac : shortcut.keys.other} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </DialogContent>
     </Dialog>

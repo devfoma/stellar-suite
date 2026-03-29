@@ -1,0 +1,24 @@
+{
+  "general": {
+    "settings": "Settings",
+    "appearance": "Appearance",
+    "language": "Language",
+    "offline_status": "Offline Mode",
+    "offline_syncing": "Syncing changes...",
+    "online": "Connected",
+    "offline": "You are currently offline. Some features (Build/Deploy) will be unavailable.",
+    "crash_title": "Something went wrong",
+    "crash_description": "The IDE encountered a fatal exception. Our diagnostics have captured the error.",
+    "send_crash_report": "Send Crash Report",
+    "report_sent": "Thank you! Our engineers will look into it."
+  },
+  "editor": {
+    "font_size": "Editor Font Size",
+    "format_on_save": "Format on Save"
+  },
+  "network": {
+    "build": "Build",
+    "deploy": "Deploy",
+    "offline_warning": "Cannot perform network actions while offline."
+  }
+}

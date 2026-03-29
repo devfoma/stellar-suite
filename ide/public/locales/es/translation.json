@@ -1,0 +1,24 @@
+{
+  "general": {
+    "settings": "Ajustes",
+    "appearance": "Apariencia",
+    "language": "Idioma",
+    "offline_status": "Modo fuera de línea",
+    "offline_syncing": "Sincronizando cambios...",
+    "online": "Conectado",
+    "offline": "Actualmente estás desconectado. Algunas funciones (Compilar/Desplegar) no estarán disponibles.",
+    "crash_title": "Algo salió mal",
+    "crash_description": "El IDE encontró una excepción fatal. Nuestros diagnósticos han capturado el error.",
+    "send_crash_report": "Enviar informe de fallos",
+    "report_sent": "¡Gracias! Nuestros ingenieros lo revisarán."
+  },
+  "editor": {
+    "font_size": "Tamaño de fuente del editor",
+    "format_on_save": "Formatear al guardar"
+  },
+  "network": {
+    "build": "Compilar",
+    "deploy": "Desplegar",
+    "offline_warning": "No se pueden realizar acciones de red mientras se está desconectado."
+  }
+}

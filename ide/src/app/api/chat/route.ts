@@ -37,11 +37,11 @@ const createSseErrorResponse = (message: string, status = 400) =>
 
 const parseOpenAIChunk = (json: string): string | null => {
   const parsed = JSON.parse(json) as {
-    choices?: Array<{
+    choices?: {
       delta?: {
         content?: string;
       };
-    }>;
+    }[];
   };
 
   return parsed.choices?.[0]?.delta?.content ?? null;

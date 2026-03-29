@@ -30,7 +30,6 @@ import { ProptestView } from "@/components/Panels/ProptestView";
 import { EventsPane } from "@/components/ide/EventsPane";
 import { ReferencesPane } from "@/components/ide/ReferencesPane";
 import { InspectorPane } from "@/components/ide/InspectorPane";
-import { ProptestView } from "@/components/Panels/ProptestView";
 import { StatusBar } from "@/components/ide/StatusBar";
 import { Terminal } from "@/components/ide/Terminal";
 import { useTerminalBridge } from "@/hooks/useTerminalBridge";

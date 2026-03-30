@@ -1206,7 +1206,7 @@ export default function Index() {
           </aside>
         ) : null}
 
-        <main className="flex min-w-0 flex-1 flex-col overflow-hidden">
+        <main id="main-content" className="flex min-w-0 flex-1 flex-col overflow-hidden">
           {/* <EditorTabs /> */}
           <div className="min-h-0 flex-1 overflow-hidden">
             {leftSidebarTab === "binary-diff" ? (

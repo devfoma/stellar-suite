@@ -5,6 +5,7 @@ import Index from "@/features/ide/Index";
 import { MobileGatekeeper } from "@/components/ide/MobileGatekeeper";
 import { QuickOpen } from "@/components/ide/QuickOpen";
 import { SettingsModal } from "@/components/ide/SettingsModal";
+import { ReleaseNotes } from "@/components/modals/ReleaseNotes";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -92,6 +93,7 @@ export default function HomePage() {
             onOpenChange={setCommandPaletteOpen}
           />
           <SettingsModal open={settingsOpen} onOpenChange={setSettingsOpen} />
+          <ReleaseNotes />
         </TooltipProvider>
       </ThemeProvider>
     </QueryClientProvider>

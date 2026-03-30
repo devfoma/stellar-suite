@@ -28,6 +28,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body className="min-h-screen bg-background text-foreground antialiased">
+        <a 
+          href="#main-content" 
+          className="sr-only focus:not-sr-only focus:absolute focus:z-[9999] focus:p-4 focus:bg-background focus:text-foreground"
+        >
+          Skip to main content
+        </a>
         <AuthSessionProvider>
           <ErrorBoundary>
             <AppStatusProvider>

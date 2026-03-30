@@ -61,7 +61,7 @@ export function TransactionResultLog({ entry }: TransactionResultLogProps) {
               <span className="text-muted-foreground/80">N/A</span>
             )}
             {entry.txHash && (
-              <button onClick={() => handleCopy(entry.txHash ?? "")} className="p-1 text-muted-foreground hover:text-foreground" title="Copy transaction hash">
+              <button onClick={() => handleCopy(entry.txHash ?? "")} className="p-1 text-muted-foreground hover:text-foreground" title="Copy transaction hash" aria-label="Copy transaction hash">
                 <Copy className="h-3 w-3" />
               </button>
             )}

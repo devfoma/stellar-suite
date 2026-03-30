@@ -114,6 +114,7 @@ export function GlobalSearch() {
               <Button
                 variant="ghost"
                 size="icon"
+                aria-label="Toggle Search Filters"
                 className="h-6 w-6"
                 onClick={() => setShowFilters(!showFilters)}
               >
@@ -140,6 +141,7 @@ export function GlobalSearch() {
                   <Button
                     variant="ghost"
                     size="icon"
+                    aria-label="Match Case"
                     className={`h-6 w-6 ${matchCase ? "bg-primary/20 text-primary" : ""}`}
                     onClick={() => setMatchCase(!matchCase)}
                   >
@@ -156,6 +158,7 @@ export function GlobalSearch() {
                   <Button
                     variant="ghost"
                     size="icon"
+                    aria-label="Use Regular Expression"
                     className={`h-6 w-6 ${isRegex ? "bg-primary/20 text-primary" : ""}`}
                     onClick={() => setIsRegex(!isRegex)}
                   >
@@ -170,6 +173,7 @@ export function GlobalSearch() {
               <Button
                 variant="ghost"
                 size="icon"
+                aria-label="Clear Search"
                 className="h-6 w-6"
                 onClick={clearSearch}
               >

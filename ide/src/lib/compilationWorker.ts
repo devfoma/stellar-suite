@@ -17,9 +17,10 @@ type WorkerInbound =
 /** Messages received from the worker on the main thread. */
 export type WorkerOutbound =
   | { type: 'chunk'; id: string; data: string }
-  | { type: 'done'; id: string; ok: boolean; status: number; output: string }
+  | { type: 'done'; id: string; ok: boolean; status?: number; output: string; wasmBase64?: string }
   | { type: 'error'; id: string; message: string }
-  | { type: 'cancelled'; id: string };
+  | { type: 'cancelled'; id: string }
+  | { type: 'status'; phase: string; memoryMb?: number };
 
 export interface CompileResult {
   ok: boolean;
@@ -35,15 +36,21 @@ interface PendingJob {
 }
 
 const WORKER_PATH = '/workers/compile.worker.js';
+const LOCAL_WORKER_PATH = '/workers/local-compiler.worker.js';
 const MAX_RESTARTS = 3;
 
 export class CompilationWorker {
   private worker: Worker | null = null;
   private jobs = new Map<string, PendingJob>();
   private restartCount = 0;
+  private workerPath: string;
+
+  constructor(useLocalCompiler: boolean = false) {
+    this.workerPath = useLocalCompiler ? LOCAL_WORKER_PATH : WORKER_PATH;
+  }
 
   private spawn(): void {
-    this.worker = new Worker(WORKER_PATH);
+    this.worker = new Worker(this.workerPath);
     this.worker.onmessage = (e: MessageEvent<WorkerOutbound>) =>
       this.handleMessage(e.data);
     this.worker.onerror = (e: ErrorEvent) => this.handleCrash(e);
@@ -51,21 +58,21 @@ export class CompilationWorker {
 
   private handleMessage(msg: WorkerOutbound): void {
     const job = this.jobs.get(msg.id);
-    if (!job) return;
+    if (!job && msg.type !== 'status') return;
 
     switch (msg.type) {
       case 'chunk':
-        job.onChunk(msg.data);
+        job!.onChunk(msg.data);
         break;
 
       case 'done':
         this.jobs.delete(msg.id);
-        job.resolve({ ok: msg.ok, status: msg.status, output: msg.output });
+        job!.resolve({ ok: msg.ok, status: msg.status ?? 0, output: msg.output });
         break;
 
       case 'error':
         this.jobs.delete(msg.id);
-        job.reject(new Error(msg.message));
+        job!.reject(new Error(msg.message));
         break;
 
       case 'cancelled': {
@@ -74,9 +81,13 @@ export class CompilationWorker {
           cancelled: true;
         };
         cancelErr.cancelled = true;
-        job.reject(cancelErr);
+        job!.reject(cancelErr);
         break;
       }
+
+      case 'status':
+        // Status updates are informational; could be logged or forwarded if needed
+        break;
     }
   }
 

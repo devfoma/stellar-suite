@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react';
+import { useUserSettingsStore } from '@/store/useUserSettingsStore';
 import { CompilationWorker, type CompileResult } from '@/lib/compilationWorker';
 import { formatTerminalChunk } from '@/utils/compileStream';
 
@@ -17,27 +18,37 @@ interface UseCompilationWorkerResult {
 /**
  * Provides a stable compile/cancel interface backed by a persistent Web Worker.
  * The worker is created lazily on first use and torn down when the component
- * that owns this hook unmounts.
+ * that owns this hook unmounts. Automatically switches between remote and local
+ * compiler based on experimentalLocalBuild setting.
  */
 export function useCompilationWorker(): UseCompilationWorkerResult {
   const workerRef = useRef<CompilationWorker | null>(null);
   const activeIdRef = useRef<string | null>(null);
+  const { experimentalLocalBuild } = useUserSettingsStore();
 
   // Lazily create the worker the first time it is needed.
   const getWorker = useCallback((): CompilationWorker => {
     if (!workerRef.current) {
-      workerRef.current = new CompilationWorker();
+      workerRef.current = new CompilationWorker(experimentalLocalBuild);
     }
     return workerRef.current;
-  }, []);
+  }, [experimentalLocalBuild]);
 
-  // Terminate the worker when the owning component unmounts.
+  // Terminate the worker when the owning component unmounts or when settings change.
   useEffect(() => {
     return () => {
       workerRef.current?.terminate();
       workerRef.current = null;
     };
   }, []);
+
+  // Recreate worker when experimentalLocalBuild setting changes
+  useEffect(() => {
+    if (workerRef.current) {
+      workerRef.current.terminate();
+      workerRef.current = null;
+    }
+  }, [experimentalLocalBuild]);
 
   const compile = useCallback(
     async (options: CompileOptions): Promise<CompileResult> => {

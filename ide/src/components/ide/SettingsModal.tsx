@@ -1,5 +1,3 @@
-"use client";
-
 import React from "react";
 import {
   Dialog,
@@ -13,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
 import { useUserSettingsStore, Language } from "@/store/useUserSettingsStore";
-import { Sun, Moon, Monitor, Type, Save, Globe, Variable, Languages } from "lucide-react";
+import { Sun, Moon, Monitor, Type, Save, Globe, Variable, Languages, Zap, AlertCircle } from "lucide-react";
 import { useTheme } from "next-themes";
 import { EnvVarManager } from "@/components/settings/EnvVarManager";
 import { ResourceUsageDashboard } from "@/components/settings/ResourceUsageDashboard";
@@ -38,8 +36,16 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
   const [isMounted, setIsMounted] = React.useState(false);
   React.useEffect(() => setIsMounted(true), []);
 
-  const { fontSize, formatOnSave, language, setFontSize, setFormatOnSave, setLanguage } =
-    useUserSettingsStore();
+  const { 
+    fontSize, 
+    formatOnSave, 
+    language, 
+    experimentalLocalBuild,
+    setFontSize, 
+    setFormatOnSave, 
+    setLanguage,
+    setExperimentalLocalBuild,
+  } = useUserSettingsStore();
   const { theme, setTheme } = useTheme();
 
   if (!isMounted) return null;
@@ -174,6 +180,23 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                 checked={formatOnSave}
                 onCheckedChange={setFormatOnSave}
                 className="data-[state=checked]:bg-primary"
+              />
+            </div>
+
+            <div className="flex items-center justify-between p-4 rounded-xl bg-amber-900/20 border border-amber-600/30">
+              <div className="space-y-1">
+                <Label className="text-base font-semibold flex items-center gap-2">
+                  <Zap className="h-4 w-4 text-amber-500" /> Experimental Local Build
+                </Label>
+                <p className="text-sm text-muted-foreground flex gap-1">
+                  <AlertCircle className="h-3 w-3 mt-0.5 text-amber-600 flex-shrink-0" />
+                  <span>Compiles Rust contracts entirely in-browser (high memory usage). No backend required.</span>
+                </p>
+              </div>
+              <Switch
+                checked={experimentalLocalBuild}
+                onCheckedChange={setExperimentalLocalBuild}
+                className="data-[state=checked]:bg-amber-600"
               />
             </div>
           </TabsContent>

@@ -65,11 +65,13 @@ interface UserSettingsState {
   brandTheme: BrandThemeTokens;
   fontSize: number;
   formatOnSave: boolean;
+  experimentalLocalBuild: boolean;
   setTheme: (theme: Theme) => void;
   setLanguage: (language: Language) => void;
   setBrandTheme: (brandTheme: BrandThemeTokens) => void;
   setFontSize: (fontSize: number) => void;
   setFormatOnSave: (formatOnSave: boolean) => void;
+  setExperimentalLocalBuild: (enabled: boolean) => void;
 }
 
 export const useUserSettingsStore = create<UserSettingsState>()(
@@ -80,6 +82,7 @@ export const useUserSettingsStore = create<UserSettingsState>()(
       brandTheme: DEFAULT_BRAND_THEME,
       fontSize: 14,
       formatOnSave: true,
+      experimentalLocalBuild: false,
       setTheme: (theme) => set({ theme }),
       setLanguage: (language) => set({ language }),
       setBrandTheme: (brandTheme) => {
@@ -88,6 +91,7 @@ export const useUserSettingsStore = create<UserSettingsState>()(
       },
       setFontSize: (fontSize) => set({ fontSize }),
       setFormatOnSave: (formatOnSave) => set({ formatOnSave }),
+      setExperimentalLocalBuild: (experimentalLocalBuild) => set({ experimentalLocalBuild }),
     }),
     {
       name: 'user-settings',

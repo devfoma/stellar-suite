@@ -64,6 +64,7 @@ import {
 } from "@/store/workspaceStore";
 import { useSharedEnvironmentStore } from "@/store/useSharedEnvironmentStore";
 import { useAuditLogStore } from "@/store/useAuditLogStore";
+import { useUserSettingsStore } from "@/store/useUserSettingsStore";
 import { useAuth } from "@/hooks/useAuth";
 import { AuditLogView } from "@/components/ide/AuditLogView";
 import { useVCSStore } from "@/store/vcsStore";
@@ -415,6 +416,14 @@ export default function Index() {
     appendTerminalOutput("> Compiling contract...\r\n");
     appendTerminalOutput(`Target network: ${network}\r\n`);
     appendTerminalOutput(`[env: ${selectedEnvironmentSlot.id}]\r\n`);
+    
+    const { experimentalLocalBuild } = useUserSettingsStore.getState();
+    if (experimentalLocalBuild) {
+      appendTerminalOutput("[EXPERIMENTAL] Local browser-based compilation enabled\r\n");
+      appendTerminalOutput("⚠️  WARNING: This mode uses significant browser memory (~300-500MB)\r\n");
+      appendTerminalOutput("⚠️  WARNING: Not recommended for large projects or older devices\r\n");
+    }
+    
     if (
       selectedEnvironmentSlot.cargoFeatures &&
       selectedEnvironmentSlot.cargoFeatures.length > 0
@@ -450,9 +459,9 @@ export default function Index() {
         action: "Contract Build",
         status: "success",
         user: auditUser,
-        params: { contractName, network },
+        params: { contractName, network, experimentalLocalBuild },
         details: "Contract compiled successfully",
-        rawJson: { contractName, network, timestamp: new Date().toISOString() },
+        rawJson: { contractName, network, timestamp: new Date().toISOString(), experimentalLocalBuild },
       });
     } catch (error) {
       if (error instanceof Error && "cancelled" in error) {

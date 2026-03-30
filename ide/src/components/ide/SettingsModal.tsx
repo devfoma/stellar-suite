@@ -17,6 +17,7 @@ import { Sun, Moon, Monitor, Type, Save, Globe, Variable, Languages } from "luci
 import { useTheme } from "next-themes";
 import { EnvVarManager } from "@/components/settings/EnvVarManager";
 import { ResourceUsageDashboard } from "@/components/settings/ResourceUsageDashboard";
+import { ThemeEditor } from "@/components/settings/ThemeEditor";
 import { Diagnostics } from "@/pages/Diagnostics";
 import { useTranslation } from "react-i18next";
 import {
@@ -94,6 +95,7 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                   </button>
                 ))}
               </div>
+              <ThemeEditor />
             </div>
 
             <div className="space-y-4 pt-4 border-t border-border">

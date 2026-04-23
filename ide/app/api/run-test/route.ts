@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { exec } from "child_process";
 import { promisify } from "util";
+import { withCorsProtection } from "../_lib/corsMiddleware";
 
 const execAsync = promisify(exec);
 
-export async function POST(req: NextRequest) {
+async function handleRunTestRequest(req: NextRequest): Promise<NextResponse> {
   let testName: string;
   let filePath: string;
 
@@ -20,7 +21,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ passed: false, output: "testName is required" }, { status: 400 });
   }
 
-  // Sanitize — only allow alphanumeric, underscores, colons
   if (!/^[a-zA-Z0-9_:]+$/.test(testName)) {
     return NextResponse.json({ passed: false, output: "Invalid test name" }, { status: 400 });
   }
@@ -43,3 +43,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ passed: false, output });
   }
 }
+
+const handlers = {
+  POST: handleRunTestRequest,
+};
+
+export const POST = withCorsProtection(handlers.POST as (req: NextRequest) => Promise<NextResponse>);

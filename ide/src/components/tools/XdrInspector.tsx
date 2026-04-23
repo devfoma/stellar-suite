@@ -2,6 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { xdr } from "@stellar/stellar-sdk";
+import {
+  normalizeXdrPayload,
+  validateBase64XdrPayload,
+} from "@/utils/XdrValidator";
 
 type DecodedType = "TransactionEnvelope" | "LedgerEntry" | "ScVal";
 
@@ -110,9 +114,17 @@ export default function XdrInspector() {
   }, [decoded]);
 
   const handleDecode = () => {
-    const normalized = inputBase64.trim();
+    const normalized = normalizeXdrPayload(inputBase64);
     if (!normalized) {
       setErrorMessage("Please paste a Base64 XDR value before decoding.");
+      setDecoded(null);
+      setEncodedBase64("");
+      return;
+    }
+
+    const validationError = validateBase64XdrPayload(normalized);
+    if (validationError) {
+      setErrorMessage(validationError.error);
       setDecoded(null);
       setEncodedBase64("");
       return;

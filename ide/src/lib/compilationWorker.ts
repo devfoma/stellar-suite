@@ -5,9 +5,12 @@
  *   - Lazy spawning (worker only created when needed, never during SSR)
  *   - Typed message passing
  *   - AbortController-based cancellation forwarded to the worker
+ *   - Timeout and memory quota supervision for browser compilation
  *   - Automatic restart (up to MAX_RESTARTS times) after a worker crash,
  *     with all in-flight jobs failed so callers receive a real error
  */
+
+import { WorkerResourceMonitor } from "@/utils/WorkerResourceMonitor";
 
 /** Messages sent from the main thread to the worker. */
 type WorkerInbound =
@@ -21,7 +24,7 @@ export type WorkerOutbound =
   | { type: 'error'; id: string; message: string }
   | { type: 'cancelled'; id: string }
   | { type: 'sri-error'; url: string; expected: string; actual: string }
-  | { type: 'status'; phase: string; memoryMb?: number };
+  | { type: 'status'; id?: string; phase: string; memoryMb?: number };
 
 export interface CompileResult {
   ok: boolean;
@@ -45,6 +48,21 @@ export class CompilationWorker {
   private jobs = new Map<string, PendingJob>();
   private restartCount = 0;
   private workerPath: string;
+  private resourceMonitor = new WorkerResourceMonitor({
+    onTimeout: (id, timeoutMs) => {
+      this.cancelAndReject(
+        id,
+        `Build cancelled after exceeding the ${Math.round(timeoutMs / 1000)}s time limit.`,
+      );
+    },
+    onMemoryExceeded: (id, memoryMb, limitMb) => {
+      this.cancelAndReject(
+        id,
+        `Build cancelled after exceeding the ${limitMb} MB memory limit (${memoryMb} MB observed).`,
+        true,
+      );
+    },
+  });
 
   constructor(useLocalCompiler: boolean = false) {
     this.workerPath = useLocalCompiler ? LOCAL_WORKER_PATH : WORKER_PATH;
@@ -58,8 +76,10 @@ export class CompilationWorker {
   }
 
   private handleMessage(msg: WorkerOutbound): void {
-    const job = this.jobs.get(msg.id);
-    if (!job && msg.type !== 'status') return;
+    const job = 'id' in msg && typeof msg.id === 'string'
+      ? this.jobs.get(msg.id)
+      : undefined;
+    if (!job && msg.type !== 'status' && msg.type !== 'sri-error') return;
 
     switch (msg.type) {
       case 'chunk':
@@ -67,16 +87,19 @@ export class CompilationWorker {
         break;
 
       case 'done':
+        this.resourceMonitor.stop(msg.id);
         this.jobs.delete(msg.id);
         job!.resolve({ ok: msg.ok, status: msg.status ?? 0, output: msg.output });
         break;
 
       case 'error':
+        this.resourceMonitor.stop(msg.id);
         this.jobs.delete(msg.id);
         job!.reject(new Error(msg.message));
         break;
 
       case 'cancelled': {
+        this.resourceMonitor.stop(msg.id);
         this.jobs.delete(msg.id);
         const cancelErr = new Error('Build cancelled') as Error & {
           cancelled: true;
@@ -87,13 +110,14 @@ export class CompilationWorker {
       }
 
       case 'status':
-        // Status updates are informational; could be logged or forwarded if needed
+        this.recordWorkerStatus(msg);
         break;
 
       case 'sri-error': {
         const sriErr = new Error(`[security] WASM integrity check failed for: ${msg.url}\n[security] Expected: ${msg.expected} | Got: ${msg.actual}\n[security] Build aborted to prevent execution of potentially tampered code.`);
         sriErr.name = "SRIIntegrityError";
         for (const job of this.jobs.values()) {
+          this.resourceMonitor.stop(job.id);
           job.reject(sriErr);
         }
         this.jobs.clear();
@@ -109,6 +133,7 @@ export class CompilationWorker {
 
     // Fail all pending jobs immediately
     for (const job of this.jobs.values()) {
+      this.resourceMonitor.stop(job.id);
       job.reject(crashError);
     }
     this.jobs.clear();
@@ -119,6 +144,43 @@ export class CompilationWorker {
       this.restartCount++;
       this.spawn();
     }
+  }
+
+  private recordWorkerStatus(msg: Extract<WorkerOutbound, { type: 'status' }>): void {
+    const jobId =
+      msg.id ??
+      (this.jobs.size === 1 ? this.jobs.values().next().value?.id : undefined);
+
+    if (jobId) {
+      this.resourceMonitor.recordMemorySample(jobId, msg.memoryMb);
+    }
+  }
+
+  private cancelAndReject(id: string, message: string, terminateWorker = false): void {
+    const job = this.jobs.get(id);
+    if (!job) return;
+
+    const error = new Error(message);
+    this.resourceMonitor.stop(id);
+    this.jobs.delete(id);
+
+    try {
+      this.worker?.postMessage({ type: 'cancel', id } satisfies WorkerInbound);
+    } catch {
+      // Worker may already be unavailable; the promise is still failed below.
+    }
+
+    if (terminateWorker) {
+      this.worker?.terminate();
+      this.worker = null;
+      for (const pending of this.jobs.values()) {
+        this.resourceMonitor.stop(pending.id);
+        pending.reject(new Error("Compilation worker terminated after exceeding resource limits."));
+      }
+      this.jobs.clear();
+    }
+
+    job.reject(error);
   }
 
   /** Post a compile request to the worker and stream results back. */
@@ -135,8 +197,15 @@ export class CompilationWorker {
 
     return new Promise<CompileResult>((resolve, reject) => {
       this.jobs.set(id, { id, onChunk, resolve, reject });
+      this.resourceMonitor.start(id);
       const msg: WorkerInbound = { type: 'compile', id, url, payload };
-      this.worker!.postMessage(msg);
+      try {
+        this.worker!.postMessage(msg);
+      } catch (error) {
+        this.resourceMonitor.stop(id);
+        this.jobs.delete(id);
+        reject(error instanceof Error ? error : new Error('Failed to start compilation worker'));
+      }
     });
   }
 
@@ -151,6 +220,7 @@ export class CompilationWorker {
   terminate(): void {
     this.worker?.terminate();
     this.worker = null;
+    this.resourceMonitor.stopAll();
     for (const job of this.jobs.values()) {
       job.reject(new Error('Worker terminated'));
     }

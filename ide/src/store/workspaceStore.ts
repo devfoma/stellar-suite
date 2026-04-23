@@ -6,8 +6,8 @@ import {
 } from "@/lib/networkConfig";
 import { FileNode, sampleContracts } from "@/lib/sample-contracts";
 import { create } from "zustand";
-import { persist, createJSONStorage } from "zustand/middleware";
-import { idbStorage } from "@/utils/idbStorage";
+import { persist } from "zustand/middleware";
+import { safeWorkspaceStorage } from "@/store/PersistenceMiddleware";
 
 interface TabInfo {
   path: string[];
@@ -394,7 +394,7 @@ export const useWorkspaceStore = create<WorkspaceState>()(
     }),
     {
       name: "stellar-suite-workspace-store",
-      storage: createJSONStorage(() => idbStorage),
+      storage: safeWorkspaceStorage,
       partialize: (state) => ({
         network: state.network,
         customRpcUrl: state.customRpcUrl,

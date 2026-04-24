@@ -17,6 +17,7 @@ import { EnvVarManager } from "@/components/settings/EnvVarManager";
 import { ResourceUsageDashboard } from "@/components/settings/ResourceUsageDashboard";
 import { ThemeEditor } from "@/components/settings/ThemeEditor";
 import { Diagnostics } from "@/components/settings/Diagnostics";
+import { TerminalSettings } from "@/components/settings/TerminalSettings";
 import { useTranslation } from "react-i18next";
 import {
   Select,
@@ -199,6 +200,8 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                 className="data-[state=checked]:bg-amber-600"
               />
             </div>
+
+            <TerminalSettings />
           </TabsContent>
 
           <TabsContent value="usage" className="space-y-4 py-6 animate-in fade-in-50 duration-300">

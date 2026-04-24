@@ -16,6 +16,7 @@ import { ContractPanel } from "@/components/ide/ContractPanel";
 import { DeploymentStepper } from "@/components/ide/DeploymentStepper";
 import { SidebarTab } from "@/store/workspaceStore";
 import { LazySidebar } from "@/components/layout/LazySidebar";
+import { HotkeysModal } from "@/components/ide/HotkeysModal";
 import { TestingView, TemplatesView } from "@/components/ide/TestingView";
 import { GeneratePropertyTest } from "@/components/Testing/GeneratePropertyTest";
 import { ProptestView } from "@/components/Panels/ProptestView";
@@ -223,6 +224,7 @@ export default function Index() {
     horizonUrl,
     networkPassphrase,
   } = useWorkspaceStore();
+  const [isHotkeysOpen, setIsHotkeysOpen] = useState(false);
   useTerminalBridge();
   
   if (!hydrationComplete) {
@@ -1512,6 +1514,8 @@ export default function Index() {
             : undefined
         }
       />
+
+      <HotkeysModal open={isHotkeysOpen} onOpenChange={setIsHotkeysOpen} />
     </div>
   );
 }

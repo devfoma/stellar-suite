@@ -13,6 +13,11 @@ export interface WorkspaceTextFile {
   content: string;
 }
 
+export interface TabInfo {
+  path: string[];
+  name: string;
+}
+
 export interface ProjectMeta {
   id: string;
   name: string;
@@ -24,6 +29,8 @@ export interface ProjectMeta {
 export interface ProjectData extends ProjectMeta {
   files: WorkspaceTextFile[];
   fileHashes: Record<string, string>;
+  openTabs?: TabInfo[];
+  activeTabPath?: string[];
 }
 
 // Returned by saveProject
@@ -82,6 +89,8 @@ export async function saveProject(params: {
   files: WorkspaceTextFile[];
   fileHashes: Record<string, string>;
   lastKnownUpdatedAt: string | null;
+  openTabs?: TabInfo[];
+  activeTabPath?: string[];
 }): Promise<SaveResult> {
   const url = params.projectId
     ? `/api/projects/${params.projectId}`
@@ -97,6 +106,8 @@ export async function saveProject(params: {
       files: params.files,
       fileHashes: params.fileHashes,
       lastKnownUpdatedAt: params.lastKnownUpdatedAt,
+      openTabs: params.openTabs,
+      activeTabPath: params.activeTabPath,
     }),
   });
 

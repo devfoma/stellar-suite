@@ -254,7 +254,7 @@ export default function Index() {
     errorCode,
     closeErrorHelp,
   } = useErrorHelpStore();
-  const { scheduleAutoSave, syncStatus, conflictData } = useCloudSyncStore();
+  const { scheduleAutoSave, scheduleTabSync, syncStatus, conflictData } = useCloudSyncStore();
   const {
     isDeployModalOpen,
     deploymentStep,
@@ -333,7 +333,7 @@ export default function Index() {
   useEffect(() => {
     if (!isAuthenticated || !user || !hydrationComplete) return;
     const userId = user.id ?? user.email ?? "anon";
-    scheduleAutoSave(userId, flattenWorkspaceFiles(files), network);
+    scheduleAutoSave(userId, flattenWorkspaceFiles(files), network, openTabs, activeTabPath);
   }, [
     files,
     isAuthenticated,
@@ -341,6 +341,24 @@ export default function Index() {
     network,
     hydrationComplete,
     scheduleAutoSave,
+    openTabs,
+    activeTabPath,
+  ]);
+
+  // Real-time tab sync (throttled 1 s) - separate from file auto-save for lower latency
+  useEffect(() => {
+    if (!isAuthenticated || !user || !hydrationComplete) return;
+    const userId = user.id ?? user.email ?? "anon";
+    scheduleTabSync(userId, flattenWorkspaceFiles(files), network, openTabs, activeTabPath);
+  }, [
+    openTabs,
+    activeTabPath,
+    isAuthenticated,
+    user,
+    network,
+    hydrationComplete,
+    scheduleTabSync,
+    files,
   ]);
 
   useEffect(() => {

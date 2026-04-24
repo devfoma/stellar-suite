@@ -140,3 +140,12 @@ export async function fetchSecureWasm(
 
   return buffer;
 }
+
+export async function secureLoadWorker(
+  url: string,
+  options: WasmLoaderOptions = {}
+): Promise<string> {
+  const buffer = await fetchSecureWasm(url, options);
+  const blob = new Blob([buffer], { type: "application/javascript" });
+  return URL.createObjectURL(blob);
+}

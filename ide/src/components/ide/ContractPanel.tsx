@@ -8,6 +8,7 @@ import type { InvocationDebugData } from "@/lib/invokeResult";
 import { CopyToClipboard } from "@/components/ide/CopyToClipboard";
 import { InteractPane } from "./InteractPane";
 import { buildArgsJson } from "@/lib/invokeUtils";
+import { XdrChecksumCard } from "@/components/ide/XdrChecksumCard";
 import {
   Dialog,
   DialogContent,
@@ -401,6 +402,9 @@ export function ContractPanel({ contractId, onInvoke, invokeState, lastInvocatio
                           <pre className="max-h-40 overflow-auto whitespace-pre-wrap break-all rounded bg-background px-3 py-2 text-[11px] text-foreground">
                             {lastInvocation.unsignedXdr}
                           </pre>
+                          <div className="mt-3">
+                            <XdrChecksumCard xdr={lastInvocation.unsignedXdr} />
+                          </div>
                         </div>
 
                         <div className="rounded-md border border-border bg-background/50 p-3">
@@ -418,6 +422,9 @@ export function ContractPanel({ contractId, onInvoke, invokeState, lastInvocatio
                           <pre className="max-h-40 overflow-auto whitespace-pre-wrap break-all rounded bg-background px-3 py-2 text-[11px] text-foreground">
                             {lastInvocation.signedXdr}
                           </pre>
+                          <div className="mt-3">
+                            <XdrChecksumCard xdr={lastInvocation.signedXdr} />
+                          </div>
                         </div>
                       </div>
                     </DialogContent>
